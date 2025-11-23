@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
@@ -6,18 +7,19 @@ import { CopyIcon } from '../constants';
 
 interface CryptoDepositModalProps {
   onClose: () => void;
+  initialNetwork?: keyof TreasuryWallets;
 }
 
 type Step = 'amount' | 'payment' | 'confirm';
 type Network = keyof TreasuryWallets;
 
-const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose }) => {
+const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose, initialNetwork }) => {
   const { treasuryWallets, addCryptoDeposit } = useAppContext();
   const { t } = useLocalization();
   
   const [step, setStep] = useState<Step>('amount');
   const [amount, setAmount] = useState(100);
-  const [network, setNetwork] = useState<Network>('erc20');
+  const [network, setNetwork] = useState<Network>(initialNetwork || 'erc20');
   const [txId, setTxId] = useState('');
   const [isCopied, setIsCopied] = useState(false);
 

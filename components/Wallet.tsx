@@ -1,10 +1,12 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import WithdrawModal from './WithdrawModal';
 import ReinvestModal from './ReinvestModal';
 import CryptoDepositModal from './CryptoDepositModal';
-import { Transaction } from '../types';
+import { Transaction, TreasuryWallets } from '../types';
+import { TokenIcon, SolanaIcon, DollarSignIcon } from '../constants';
 
 const Wallet: React.FC = () => {
   const { 
@@ -14,6 +16,7 @@ const Wallet: React.FC = () => {
   } = useAppContext();
   const { t } = useLocalization();
   const [isCryptoDepositOpen, setIsCryptoDepositOpen] = useState(false);
+  const [selectedDepositNetwork, setSelectedDepositNetwork] = useState<keyof TreasuryWallets>('erc20');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isReinvestOpen, setIsReinvestOpen] = useState(false);
 
@@ -30,6 +33,11 @@ const Wallet: React.FC = () => {
   const totalInvestment = investments
     .filter(inv => inv.userId === currentUser.id && inv.status === 'Active')
     .reduce((sum, inv) => sum + inv.amount, 0);
+
+  const handleOpenDeposit = (network: keyof TreasuryWallets) => {
+      setSelectedDepositNetwork(network);
+      setIsCryptoDepositOpen(true);
+  };
 
   const getTransactionColor = (type: string) => {
     switch(type) {
@@ -117,11 +125,70 @@ const Wallet: React.FC = () => {
               <p className="text-gray-500 font-mono mt-4 pt-4 border-t border-gray-700 text-sm break-all">{currentUser.wallet}</p>
             </div>
             <div className="flex flex-col space-y-2 sm:flex-row sm:flex-wrap sm:justify-end sm:space-x-4 sm:space-y-0 w-full sm:w-auto [&>button]:flex-shrink-0">
-              <button onClick={() => setIsCryptoDepositOpen(true)} className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-4 rounded-lg">{t('wallet.depositFunds')}</button>
+              <button onClick={() => handleOpenDeposit('erc20')} className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-4 rounded-lg">{t('wallet.depositFunds')}</button>
               <button onClick={() => setIsWithdrawOpen(true)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg">{t('wallet.withdraw')}</button>
               <button onClick={() => setIsReinvestOpen(true)} className="bg-brand-secondary hover:bg-brand-secondary/90 text-white font-bold py-2 px-4 rounded-lg">{t('wallet.invest')}</button>
             </div>
           </div>
+        </div>
+
+        {/* Fund Your Account Section */}
+        <div>
+            <h3 className="text-lg font-semibold text-white mb-4">{t('wallet.fundAccount')}</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div 
+                    onClick={() => handleOpenDeposit('erc20')}
+                    className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-brand-primary cursor-pointer transition-colors flex items-center space-x-4 group"
+                >
+                    <div className="bg-gray-700 group-hover:bg-gray-600 p-3 rounded-full transition-colors">
+                        <DollarSignIcon className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                        <p className="font-bold text-white">USDT (ERC20)</p>
+                        <p className="text-xs text-gray-400">Ethereum Network</p>
+                    </div>
+                </div>
+
+                <div 
+                    onClick={() => handleOpenDeposit('trc20')}
+                    className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-brand-primary cursor-pointer transition-colors flex items-center space-x-4 group relative overflow-hidden"
+                >
+                    <div className="absolute top-0 right-0 bg-green-600 text-[10px] px-2 py-0.5 rounded-bl text-white font-bold">Recommended</div>
+                    <div className="bg-gray-700 group-hover:bg-gray-600 p-3 rounded-full transition-colors">
+                        <TokenIcon className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div>
+                        <p className="font-bold text-white">USDT (TRC20)</p>
+                        <p className="text-xs text-gray-400">Tron Network</p>
+                    </div>
+                </div>
+
+                <div 
+                    onClick={() => handleOpenDeposit('polygon')}
+                    className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-brand-primary cursor-pointer transition-colors flex items-center space-x-4 group"
+                >
+                    <div className="bg-gray-700 group-hover:bg-gray-600 p-3 rounded-full transition-colors">
+                        <TokenIcon className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                        <p className="font-bold text-white">USDT (Polygon)</p>
+                        <p className="text-xs text-gray-400">Matic Network</p>
+                    </div>
+                </div>
+
+                <div 
+                    onClick={() => handleOpenDeposit('solana')}
+                    className="bg-gray-800 p-4 rounded-lg border border-gray-700 hover:border-brand-primary cursor-pointer transition-colors flex items-center space-x-4 group"
+                >
+                    <div className="bg-gray-700 group-hover:bg-gray-600 p-3 rounded-full transition-colors">
+                        <SolanaIcon className="w-6 h-6 text-teal-400" />
+                    </div>
+                    <div>
+                        <p className="font-bold text-white">USDT (Solana)</p>
+                        <p className="text-xs text-gray-400">Solana Network</p>
+                    </div>
+                </div>
+            </div>
         </div>
         
         {/* Solana Wallet Integration */}
@@ -230,7 +297,7 @@ const Wallet: React.FC = () => {
         </div>
       </div>
 
-      {isCryptoDepositOpen && <CryptoDepositModal onClose={() => setIsCryptoDepositOpen(false)} />}
+      {isCryptoDepositOpen && <CryptoDepositModal onClose={() => setIsCryptoDepositOpen(false)} initialNetwork={selectedDepositNetwork} />}
       {isWithdrawOpen && <WithdrawModal currentBalance={depositBalance + profitBalance} onClose={() => setIsWithdrawOpen(false)} />}
       {isReinvestOpen && <ReinvestModal depositBalance={depositBalance} profitBalance={profitBalance} onClose={() => setIsReinvestOpen(false)} />}
     </>
