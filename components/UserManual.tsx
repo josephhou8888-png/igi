@@ -76,7 +76,7 @@ const UserManual: React.FC = () => {
                       <p>The admin overview provides a real-time, high-level look at the platform's health and allows you to control the flow of time for demonstration purposes.</p>
                       <ul className="list-disc list-inside space-y-3">
                           <li>
-                              <strong>Platform Stats:</strong> Monitor key performance indicators at a glance. "Total Invested" shows the total capital deployed across all users. "Total Users" and "Active Accounts" (users with an investment > 0) track growth and engagement. "Pending KYC" highlights the number of users awaiting identity verification, a crucial step for platform compliance.
+                              <strong>Platform Stats:</strong> Monitor key performance indicators at a glance. "Total Invested" shows the total capital deployed across all users. "Total Users" and "Active Accounts" (users with an investment &gt; 0) track growth and engagement. "Pending KYC" highlights the number of users awaiting identity verification, a crucial step for platform compliance.
                           </li>
                           <li>
                               <strong>Date Simulation (Core Demo Feature):</strong> This is a unique and powerful tool for demonstrating the platform's financial logic over time.
