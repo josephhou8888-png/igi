@@ -1,0 +1,5 @@
+{
+  "name": "IGI Partnership Program Dashboard",
+  "description": "A comprehensive dashboard for managing investments, referrals, and bonuses for the IGI Partnership Program platform. It features user and admin views, network visualization, and detailed analytics.",
+  "requestFramePermissions": []
+}
