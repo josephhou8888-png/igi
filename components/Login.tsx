@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 
 const Login: React.FC = () => {
-  const { login, signup, users } = useAppContext();
+  const { login, signup, users, isDemoMode } = useAppContext();
   const { t } = useLocalization();
   
   const [isSignup, setIsSignup] = useState(false);
@@ -45,13 +46,13 @@ const Login: React.FC = () => {
 
         await signup({
             name: formData.name,
-            email: formData.email,
+            email: formData.email.trim(),
             password: formData.password,
             uplineId: uplineId,
             country: formData.country || 'Global'
         });
       } else {
-        await login(formData.email, formData.password);
+        await login(formData.email.trim(), formData.password);
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed");
@@ -62,7 +63,13 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
-      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 relative overflow-hidden">
+        
+        {/* Mode Indicator Badge */}
+        <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDemoMode ? 'bg-yellow-900 text-yellow-300 border border-yellow-700' : 'bg-green-900 text-green-300 border border-green-700'}`}>
+            {isDemoMode ? 'Demo Mode' : 'Live Mode'}
+        </div>
+
         <div className="text-center">
             <h1 className="text-3xl font-bold text-white mb-2">
               IGI <span className="text-brand-primary">{t('sidebar.title')}</span>
@@ -104,6 +111,8 @@ const Login: React.FC = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all"
                 placeholder="you@example.com"
+                autoCapitalize="none"
+                autoComplete="email"
                 required
             />
           </div>
@@ -202,15 +211,55 @@ const Login: React.FC = () => {
             </button>
         </div>
 
-        <div className="text-center text-xs text-gray-500 mt-4">
-            <p>Demo Mode: Use mock credentials or create a new account. Data is persisted locally.</p>
-            {!isSignup && (
-                <div className="mt-2 bg-gray-700/50 p-2 rounded border border-gray-600/50 inline-block text-left">
-                    <p className="font-mono">User: alex@example.com</p>
-                    <p className="font-mono">Pass: password</p>
+        {isDemoMode ? (
+            <div className="text-center text-xs text-gray-500 mt-4">
+                <p>Demo Mode: Use mock credentials or create a new account. Data is persisted locally.</p>
+                {!isSignup && (
+                    <div className="mt-2 bg-gray-700/50 p-3 rounded border border-gray-600/50 inline-block text-left space-y-3 w-full">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <span className="text-gray-400 text-[10px] uppercase tracking-wider block">User</span>
+                                <p className="font-mono text-white">alex@example.com</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-gray-400 text-[10px] uppercase tracking-wider block">Pass</span>
+                                <p className="font-mono text-white">password</p>
+                            </div>
+                        </div>
+                        <div className="border-t border-gray-600/50 pt-2 flex justify-between items-center">
+                            <div>
+                                <span className="text-brand-primary text-[10px] uppercase tracking-wider block font-bold">Admin</span>
+                                <p className="font-mono text-white">admin@igipartnership.com</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-brand-primary text-[10px] uppercase tracking-wider block font-bold">Pass</span>
+                                <p className="font-mono text-white">password</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        ) : (
+            <div className="text-center text-xs text-gray-500 mt-4 bg-gray-700/30 p-4 rounded-lg border border-gray-600">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    <p className="text-green-400 font-bold text-sm">Live System Connected</p>
                 </div>
-            )}
-        </div>
+                <div className="text-left space-y-2">
+                    <p className="font-semibold text-gray-300">Why can't I login as Admin?</p>
+                    <p>The demo credentials (admin@...) do not exist in your Supabase database.</p>
+                    <p className="font-semibold text-gray-300 mt-2">How to become Admin:</p>
+                    <ol className="list-decimal list-inside space-y-1 ml-1">
+                        <li>Use "Sign Up" above to create a real account.</li>
+                        <li>Go to your Supabase Dashboard &gt; Table Editor &gt; 'profiles'.</li>
+                        <li>Find your user and change 'role' from 'user' to 'admin'.</li>
+                    </ol>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

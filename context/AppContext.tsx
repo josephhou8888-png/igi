@@ -80,6 +80,7 @@ interface AppContextType {
   signup: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  isDemoMode: boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -281,7 +282,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     if (!supabase) {
         // Local Mock Login for Demo Mode
-        const user = users.find(u => u.email === email);
+        // Make case insensitive and trim
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = users.find(u => u.email.toLowerCase() === normalizedEmail);
+        
         if (user && (user.password === password || password === 'password')) {
              if(user.isFrozen) throw new Error("Account is frozen.");
              setCurrentUser(user);
@@ -885,7 +889,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       approveDeposit, rejectDeposit,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets,
-      login, signup, logout, loading
+      login, signup, logout, loading,
+      isDemoMode: !supabase
     }}>
       {children}
     </AppContext.Provider>
