@@ -155,6 +155,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           kycStatus: u.kyc_status,
           isFrozen: u.is_frozen,
           joinDate: u.join_date,
+          role: u.role ? u.role.toLowerCase() : 'user', // Normalize role
           achievements: u.achievements || []
       })));
       
@@ -250,6 +251,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 kycStatus: data.kyc_status,
                 isFrozen: data.is_frozen,
                 joinDate: data.join_date,
+                role: data.role ? data.role.toLowerCase() : 'user', // Normalize
                 achievements: data.achievements || []
             });
         });
@@ -270,6 +272,20 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
     return () => subscription.unsubscribe();
   }, [refreshData]);
+
+  // Sync currentUser with updated users data from global refresh
+  useEffect(() => {
+    if (currentUser && users.length > 0) {
+        const updatedProfile = users.find(u => u.id === currentUser.id);
+        if (updatedProfile) {
+            // Check for discrepancies in critical fields like role or frozen status
+            if (updatedProfile.role !== currentUser.role || updatedProfile.isFrozen !== currentUser.isFrozen) {
+                console.log(`Syncing user profile: Role changed from ${currentUser.role} to ${updatedProfile.role}`);
+                setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
+            }
+        }
+    }
+  }, [users, currentUser?.id, currentUser?.role, currentUser?.isFrozen]);
 
   // Persist Settings to LocalStorage
   useEffect(() => setStoredData('igi_ranks', ranks), [ranks]);
@@ -314,6 +330,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 kycStatus: profile.kyc_status,
                 isFrozen: profile.is_frozen,
                 joinDate: profile.join_date,
+                role: profile.role ? profile.role.toLowerCase() : 'user',
                 achievements: profile.achievements || []
              });
         }
