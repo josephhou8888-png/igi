@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -8,7 +9,8 @@ const PlatformSettings: React.FC = () => {
         ranks, updateRankSettings, 
         runMonthlyCycle, currentDate, 
         instantBonusRates, teamBuilderBonusRates, updateBonusRates,
-        treasuryWallets, updateTreasuryWallets 
+        treasuryWallets, updateTreasuryWallets,
+        seedDatabase, isDemoMode
     } = useAppContext();
     const { t } = useLocalization();
     const [localRanks, setLocalRanks] = useState<Rank[]>(ranks);
@@ -160,13 +162,23 @@ const PlatformSettings: React.FC = () => {
                         </div>
                     ))}
                 </div>
-                <div className="flex justify-between items-center mt-6">
-                    <button
-                        onClick={handleRunCycle}
-                        className="px-6 py-2 rounded-md bg-green-600 text-white font-semibold hover:bg-green-500"
-                    >
-                        {t('admin.settings.runManualCycle')}
-                    </button>
+                <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+                    <div className="flex gap-4">
+                        <button
+                            onClick={handleRunCycle}
+                            className="px-6 py-2 rounded-md bg-green-600 text-white font-semibold hover:bg-green-500"
+                        >
+                            {t('admin.settings.runManualCycle')}
+                        </button>
+                        {!isDemoMode && (
+                            <button
+                                onClick={() => { if(window.confirm('Insert demo projects, pools and news?')) seedDatabase() }}
+                                className="px-6 py-2 rounded-md bg-purple-600 text-white font-semibold hover:bg-purple-500"
+                            >
+                                {t('admin.settings.seedDatabase')}
+                            </button>
+                        )}
+                    </div>
                     <button
                         onClick={handleSave}
                         className="px-6 py-2 rounded-md bg-brand-primary text-white font-semibold hover:bg-brand-primary/90"

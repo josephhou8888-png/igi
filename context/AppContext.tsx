@@ -75,6 +75,7 @@ interface AppContextType {
   updateNewsPost: (post: NewsPost) => void;
   updateBonusRates: (newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => void;
   updateTreasuryWallets: (wallets: TreasuryWallets) => void;
+  seedDatabase: () => Promise<void>;
   // Auth functions
   login: (email: string, password: string) => Promise<void>;
   signup: (userData: Partial<User>) => Promise<void>;
@@ -919,6 +920,60 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setTreasuryWallets(wallets);
   }, []);
 
+  const seedDatabase = useCallback(async () => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+        // Projects
+        const projectsData = MOCK_PROJECTS.map(p => ({
+            token_name: p.tokenName,
+            token_ticker: p.tokenTicker,
+            asset_type: p.assetType,
+            asset_identifier: p.assetIdentifier,
+            asset_description: p.assetDescription,
+            asset_location: p.assetLocation,
+            asset_image_url: p.assetImageUrl,
+            asset_valuation: p.assetValuation,
+            expected_yield: p.expectedYield,
+            min_investment: p.minInvestment,
+            token_price: p.tokenPrice,
+            total_token_supply: p.totalTokenSupply,
+            smart_contract_address: p.smartContractAddress,
+            valuation_date: p.valuationDate
+        }));
+        const { error: projError } = await supabase.from('projects').insert(projectsData);
+        if (projError) console.error('Error seeding projects:', projError);
+
+        // Pools
+        const poolsData = MOCK_INVESTMENT_POOLS.map(p => ({
+            name: p.name,
+            description: p.description,
+            apy: p.apy,
+            min_investment: p.minInvestment
+        }));
+        const { error: poolError } = await supabase.from('investment_pools').insert(poolsData);
+        if (poolError) console.error('Error seeding pools:', poolError);
+
+        // News
+        const newsData = MOCK_NEWS.map(n => ({
+            title: n.title,
+            content: n.content,
+            date: n.date,
+            author: n.author
+        }));
+        const { error: newsError } = await supabase.from('news').insert(newsData);
+        if (newsError) console.error('Error seeding news:', newsError);
+
+        alert('Database seeded with Projects, Pools, and News!');
+        refreshData();
+    } catch (e) {
+        console.error(e);
+        alert('Error seeding database.');
+    } finally {
+        setLoading(false);
+    }
+  }, [refreshData]);
+
   return (
     <AppContext.Provider value={{
       users, investments, transactions, bonuses, ranks, news, notifications, projects, investmentPools,
@@ -933,6 +988,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       approveDeposit, rejectDeposit,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets,
+      seedDatabase,
       login, signup, logout, loading,
       isDemoMode: !supabase
     }}>
