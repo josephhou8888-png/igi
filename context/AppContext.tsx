@@ -134,7 +134,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setLoading(false);
         return;
     }
-    setLoading(true);
+    // Don't set loading true here to avoid flickering on realtime updates
     try {
       const { data: usersData } = await supabase.from('profiles').select('*');
       const { data: invData } = await supabase.from('investments').select('*');
@@ -155,7 +155,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           kycStatus: u.kyc_status,
           isFrozen: u.is_frozen,
           joinDate: u.join_date,
-          role: u.role ? u.role.toLowerCase() : 'user', // Normalize role
+          role: u.role ? u.role.toLowerCase().trim() : 'user', // Normalize role
           achievements: u.achievements || []
       })));
       
@@ -228,6 +228,26 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
   }, []);
 
+  // Realtime Subscription
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channels = supabase.channel('custom-all-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        (payload) => {
+          console.log('Change received!', payload);
+          refreshData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channels);
+    }
+  }, [refreshData]);
+
   // Check active session on mount
   useEffect(() => {
     if (!supabase) {
@@ -251,7 +271,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 kycStatus: data.kyc_status,
                 isFrozen: data.is_frozen,
                 joinDate: data.join_date,
-                role: data.role ? data.role.toLowerCase() : 'user', // Normalize
+                role: data.role ? data.role.toLowerCase().trim() : 'user', // Normalize
                 achievements: data.achievements || []
             });
         });
@@ -278,14 +298,23 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     if (currentUser && users.length > 0) {
         const updatedProfile = users.find(u => u.id === currentUser.id);
         if (updatedProfile) {
-            // Check for discrepancies in critical fields like role or frozen status
-            if (updatedProfile.role !== currentUser.role || updatedProfile.isFrozen !== currentUser.isFrozen) {
-                console.log(`Syncing user profile: Role changed from ${currentUser.role} to ${updatedProfile.role}`);
+            // Deep equality check to avoid loops, simplified for key fields
+            const roleChanged = updatedProfile.role !== currentUser.role;
+            const frozenChanged = updatedProfile.isFrozen !== currentUser.isFrozen;
+            const rankChanged = updatedProfile.rank !== currentUser.rank;
+            
+            if (roleChanged || frozenChanged || rankChanged) {
+                console.log(`Syncing user profile for ${currentUser.email}`);
                 setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
+                
+                if (roleChanged) {
+                    // Optional: Alert user if role specifically changes
+                    // alert(`Your account role has been updated to: ${updatedProfile.role}`);
+                }
             }
         }
     }
-  }, [users, currentUser?.id, currentUser?.role, currentUser?.isFrozen]);
+  }, [users, currentUser]);
 
   // Persist Settings to LocalStorage
   useEffect(() => setStoredData('igi_ranks', ranks), [ranks]);
@@ -298,7 +327,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const login = useCallback(async (email: string, password: string) => {
     if (!supabase) {
         // Local Mock Login for Demo Mode
-        // Make case insensitive and trim
         const normalizedEmail = email.toLowerCase().trim();
         const user = users.find(u => u.email.toLowerCase() === normalizedEmail);
         
@@ -330,7 +358,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 kycStatus: profile.kyc_status,
                 isFrozen: profile.is_frozen,
                 joinDate: profile.join_date,
-                role: profile.role ? profile.role.toLowerCase() : 'user',
+                role: profile.role ? profile.role.toLowerCase().trim() : 'user',
                 achievements: profile.achievements || []
              });
         }
@@ -479,9 +507,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
 
-    refreshData();
-
-  }, [users, currentDate, projects, investmentPools, instantBonusRates, refreshData, currentUser]);
+    // Realtime subscription will pick up changes
+  }, [users, currentDate, projects, investmentPools, instantBonusRates, currentUser]);
 
   const addInvestmentFromBalance = useCallback((amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
     if (!currentUser) return;
@@ -507,8 +534,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           date: currentDate.toISOString().split('T')[0],
           status: 'pending',
       });
-      refreshData();
-  }, [currentUser, currentDate, refreshData]);
+      // Realtime subscription will pick up changes
+  }, [currentUser, currentDate]);
 
 
   const addWithdrawal = useCallback(async (amount: number, balance: number) => {
@@ -529,8 +556,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       user_id: currentUser.id, type: 'Withdrawal', amount,
       date: currentDate.toISOString().split('T')[0], tx_hash: `0x...wdw${Date.now().toString().slice(-4)}`,
     });
-    refreshData();
-  }, [currentUser, currentDate, refreshData]);
+    // Realtime subscription will pick up changes
+  }, [currentUser, currentDate]);
 
   const updateKycStatus = useCallback(async (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => {
       if (!supabase) {
@@ -546,8 +573,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
               date: currentDate.toISOString().split('T')[0], read: false,
           });
       }
-      refreshData();
-  }, [currentDate, addNotification, refreshData, currentUser]);
+      // Realtime subscription will pick up changes
+  }, [currentDate, addNotification, currentUser]);
 
   const toggleFreezeUser = useCallback(async (userId: string) => {
     const user = users.find(u => u.id === userId);
@@ -557,17 +584,17 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('profiles').update({ is_frozen: !user.isFrozen }).eq('id', userId);
-        refreshData();
+        // Realtime subscription will pick up changes
     }
-  }, [users, refreshData]);
+  }, [users]);
 
   const markNotificationsAsRead = useCallback(async () => {
     if(!currentUser) return;
-    if (!supabase) return; // Mock handling omitted for simplicity
+    if (!supabase) return; 
     await supabase.from('bonuses').update({ read: true }).eq('user_id', currentUser.id);
     await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
-    refreshData();
-  }, [currentUser, refreshData]);
+    // Realtime subscription will pick up changes
+  }, [currentUser]);
 
   const updateUser = useCallback(async (updatedUser: User) => {
     if (!supabase) {
@@ -580,8 +607,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         avatar: updatedUser.avatar,
         wallet: updatedUser.wallet
     }).eq('id', updatedUser.id);
-    refreshData();
-  }, [refreshData, currentUser]);
+    // Realtime subscription will pick up changes
+  }, [currentUser]);
 
   const deleteUser = useCallback(async (userId: string) => {
     if(window.confirm('Are you sure?')) {
@@ -590,9 +617,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('profiles').delete().eq('id', userId); 
-        refreshData();
+        // Realtime subscription will pick up changes
     }
-  }, [refreshData]);
+  }, []);
 
   const deleteInvestment = useCallback(async (investmentId: string) => {
      if(window.confirm('Are you sure?')) {
@@ -601,9 +628,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('investments').delete().eq('id', investmentId);
-        refreshData();
+        // Realtime subscription will pick up changes
      }
-  }, [refreshData]);
+  }, []);
 
   const updateRankSettings = useCallback((updatedRanks: Rank[]) => {
     setRanks(updatedRanks);
@@ -618,8 +645,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('transactions').insert({ user_id: userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` });
-    refreshData();
-  }, [currentDate, refreshData]);
+    // Realtime subscription will pick up changes
+  }, [currentDate]);
   
   const addNewsPost = useCallback(async (post: Omit<NewsPost, 'id'>) => {
     if (!supabase) {
@@ -627,8 +654,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('news').insert(post);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const deleteNewsPost = useCallback(async (postId: string) => {
     if(window.confirm('Are you sure?')) {
@@ -637,9 +664,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('news').delete().eq('id', postId);
-        refreshData();
+        // Realtime subscription will pick up changes
     }
-  }, [refreshData]);
+  }, []);
 
   // --- SIMULATION LOGIC ---
   const runMonthlyCycle = useCallback((cycleDate: Date) => {
@@ -656,7 +683,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, []);
 
   const addProject = useCallback(async (project: Partial<Omit<Project, 'id'>>) => {
-    if (!supabase) return; // Mock implementation omitted
+    if (!supabase) return; 
     await supabase.from('projects').insert({
         token_name: project.tokenName,
         asset_type: project.assetType,
@@ -665,22 +692,22 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         min_investment: project.minInvestment,
         // ... others
     });
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const updateProject = useCallback(async (project: Project) => {
     if (!supabase) return;
     await supabase.from('projects').update({
         token_name: project.tokenName,
     }).eq('id', project.id);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const deleteProject = useCallback(async (projectId: string) => {
       if (!supabase) return;
       await supabase.from('projects').delete().eq('id', projectId);
-      refreshData();
-  }, [refreshData]);
+      // Realtime subscription will pick up changes
+  }, []);
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
     if (!supabase) return;
@@ -690,8 +717,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         apy: pool.apy,
         min_investment: pool.minInvestment
     });
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
     if (!supabase) return;
@@ -701,14 +728,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         apy: pool.apy,
         min_investment: pool.minInvestment
     }).eq('id', pool.id);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const deleteInvestmentPool = useCallback(async (poolId: string) => {
       if (!supabase) return;
       await supabase.from('investment_pools').delete().eq('id', poolId);
-      refreshData();
-  }, [refreshData]);
+      // Realtime subscription will pick up changes
+  }, []);
 
 
   const adjustUserRank = useCallback(async (userId: string, newRank: number, reason: string) => {
@@ -724,8 +751,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         date: currentDate.toISOString().split('T')[0],
         read: false,
     });
-    refreshData();
-  }, [addNotification, currentDate, refreshData]);
+    // Realtime subscription will pick up changes
+  }, [addNotification, currentDate]);
 
   const getUserBalances = useCallback((userId: string) => {
       const userTransactions = transactions.filter(t => t.userId === userId);
@@ -818,8 +845,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('transactions').update({ status: 'completed' }).eq('id', transactionId);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const rejectDeposit = useCallback(async (transactionId: string, reason: string) => {
     if (!supabase) {
@@ -827,8 +854,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', transactionId);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const createUser = useCallback(async (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments: InitialInvestmentData[] = []) => {
     if (!supabase) {
@@ -852,9 +879,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
         return;
     }
-    await supabase.from('profiles').update({ role }).eq('id', userId);
-    refreshData();
-  }, [refreshData]);
+    await supabase.from('profiles').update({ role: role.toLowerCase().trim() }).eq('id', userId);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const addInvestmentForUser = useCallback((userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment' = 'deposit') => {
     executeInvestment(userId, amount, assetId, type, source);
@@ -870,8 +897,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('investments').update({ amount: investment.amount, date: investment.date, status: investment.status }).eq('id', investment.id);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const updateNewsPost = useCallback(async (post: NewsPost) => {
     if (!supabase) {
@@ -879,8 +906,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('news').update({ title: post.title, content: post.content }).eq('id', post.id);
-    refreshData();
-  }, [refreshData]);
+    // Realtime subscription will pick up changes
+  }, []);
 
   const updateBonusRates = useCallback((newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => {
     setInstantBonusRates(newInstantRates);
