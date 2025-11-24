@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../../types';
-import { MoreVerticalIcon, DollarSignIcon, EditIcon, TrashIcon, ZapIcon, ZapOffIcon, ShieldIcon, AwardIcon, PlusCircleIcon } from '../../constants';
+import { MoreVerticalIcon, DollarSignIcon, EditIcon, TrashIcon, ZapIcon, ZapOffIcon, ShieldIcon, AwardIcon, PlusCircleIcon, WalletIcon } from '../../constants';
 import { useLocalization } from '../../hooks/useLocalization';
 
 interface AdminUserMenuProps {
@@ -12,9 +13,10 @@ interface AdminUserMenuProps {
   onChangeRole: (userId: string, role: 'user' | 'admin') => void;
   onAdjustRank: () => void;
   onAddInvestment: () => void;
+  onInvestFromBalance: () => void;
 }
 
-const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onToggleFreeze, onEdit, onDelete, onChangeRole, onAdjustRank, onAddInvestment }) => {
+const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onToggleFreeze, onEdit, onDelete, onChangeRole, onAdjustRank, onAddInvestment, onInvestFromBalance }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useLocalization();
@@ -76,6 +78,12 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
               label={t('admin.userMenu.addInvestment')}
               onClick={onAddInvestment}
               className="text-teal-400"
+            />
+            <MenuItem
+              icon={<WalletIcon className="w-5 h-5 text-blue-400" />}
+              label={t('admin.userMenu.investFromWallet')}
+              onClick={onInvestFromBalance}
+              className="text-blue-400"
             />
             <MenuItem
               icon={<DollarSignIcon className="w-5 h-5 text-green-400" />}

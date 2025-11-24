@@ -47,13 +47,9 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
   }, [initialAssetId, forcedSource, projects, investmentPools, profitBalance]);
 
   const availableAssets = useMemo(() => {
-    // Deposit source: Can invest in Projects (to give deposits a use)
-    if (investmentSource === 'deposit') {
-        return projects; 
-    }
-    // Profit source: Can invest in Projects AND Legacy Funds
+    // Allow investing in both Projects and Legacy Funds from any source (Deposit or Profit)
     return [...projects, ...investmentPools];
-  }, [investmentSource, projects, investmentPools]);
+  }, [projects, investmentPools]);
 
   const selectedAsset = useMemo(() => {
     if (!selectedAssetId) return null;

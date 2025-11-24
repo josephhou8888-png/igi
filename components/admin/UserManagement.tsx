@@ -10,6 +10,7 @@ import AdminUserMenu from './AdminUserMenu';
 import CreateUserModal from './CreateUserModal';
 import AdjustRankModal from './AdjustRankModal';
 import AddInvestmentModal from './AddInvestmentModal';
+import InvestFromBalanceModal from './InvestFromBalanceModal';
 import { UserPlusIcon } from '../../constants';
 
 const UserManagement: React.FC = () => {
@@ -21,6 +22,7 @@ const UserManagement: React.FC = () => {
     const [adjustingRankUser, setAdjustingRankUser] = useState<User | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [addingInvestmentUser, setAddingInvestmentUser] = useState<User | null>(null);
+    const [investingBalanceUser, setInvestingBalanceUser] = useState<User | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredUsers = useMemo(() => {
@@ -141,6 +143,7 @@ const UserManagement: React.FC = () => {
                                        <AdminUserMenu
                                             user={user}
                                             onAddInvestment={() => setAddingInvestmentUser(user)}
+                                            onInvestFromBalance={() => setInvestingBalanceUser(user)}
                                             onAdjustWallet={() => setAdjustingUser(user)}
                                             onAdjustRank={() => setAdjustingRankUser(user)}
                                             onToggleFreeze={() => toggleFreezeUser(user.id)}
@@ -161,6 +164,7 @@ const UserManagement: React.FC = () => {
             {reviewingKycUser && <KycReviewModal user={reviewingKycUser} onClose={() => setReviewingKycUser(null)} />}
             {adjustingRankUser && <AdjustRankModal user={adjustingRankUser} onClose={() => setAdjustingRankUser(null)} />}
             {addingInvestmentUser && <AddInvestmentModal user={addingInvestmentUser} onClose={() => setAddingInvestmentUser(null)} />}
+            {investingBalanceUser && <InvestFromBalanceModal user={investingBalanceUser} onClose={() => setInvestingBalanceUser(null)} />}
         </>
     );
 };
