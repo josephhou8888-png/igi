@@ -116,6 +116,7 @@ export interface Rank {
   minAccounts: number;
   newlyQualified: number;
   fixedBonus: number;
+  minTotalInvestment: number;
 }
 
 export interface NewsPost {

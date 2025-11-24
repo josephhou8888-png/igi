@@ -108,6 +108,12 @@ export const locales = {
       "cryptoDepositModal.title": "Deposit USDT",
       "cryptoDepositModal.step1.title": "Step 1: Enter Amount & Select Network",
       "cryptoDepositModal.amountLabel": "Amount to Deposit (USDT)",
+      "cryptoDepositModal.targetLabel": "Target Investment",
+      "cryptoDepositModal.targetWallet": "Add to Wallet Balance",
+      "cryptoDepositModal.targetSelectedHint": "Funds will be earmarked for this investment.",
+      "cryptoDepositModal.targetWalletHint": "Funds will be added to your Deposit Balance for later use.",
+      "cryptoDepositModal.optional": "Optional",
+      "cryptoDepositModal.autoInvestMessage": "Your deposit is set to automatically invest in {asset} upon approval.",
       "cryptoDepositModal.networkLabel": "Payment Network",
       "cryptoDepositModal.next": "Next",
       "cryptoDepositModal.step2.title": "Step 2: Make Payment",
@@ -303,6 +309,7 @@ export const locales = {
       "admin.settings.rankConfigTitle": "Rank Configuration",
       "admin.settings.minAccounts": "Min. Active Accounts",
       "admin.settings.newlyQualified": "Min. Newly Qualified (Monthly)",
+      "admin.settings.minTotalInvestment": "Min. Network Investment",
       "admin.settings.fixedBonus": "Fixed Bonus (USDT)",
       "admin.settings.runManualCycle": "Run Manual Monthly Cycle",
       "admin.settings.saveAllSettings": "Save All Settings",
@@ -465,7 +472,9 @@ export const locales = {
       "admin.approveDeposit.bonusLabel": "Add Deposit Bonus (USDT)",
       "admin.approveDeposit.bonusHint": "Leave as 0 for no bonus.",
       "admin.approveDeposit.errorBonusInvalid": "Bonus amount must be a valid positive number.",
-      "admin.approveDeposit.confirmApproval": "Confirm Approval"
+      "admin.approveDeposit.confirmApproval": "Confirm Approval",
+      "admin.approveDeposit.userIntent": "User intends to invest in: {target}",
+      "admin.approveDeposit.autoExecute": "Automatically execute investment upon approval"
     }
   },
   'zh-TW': {
@@ -576,6 +585,12 @@ export const locales = {
       "cryptoDepositModal.title": "存入 USDT",
       "cryptoDepositModal.step1.title": "步驟 1：輸入金額並選擇網路",
       "cryptoDepositModal.amountLabel": "存款金額 (USDT)",
+      "cryptoDepositModal.targetLabel": "目標投資",
+      "cryptoDepositModal.targetWallet": "添加到錢包餘額",
+      "cryptoDepositModal.targetSelectedHint": "資金將指定用於此投資。",
+      "cryptoDepositModal.targetWalletHint": "資金將添加到您的存款餘額以供日後使用。",
+      "cryptoDepositModal.optional": "可選",
+      "cryptoDepositModal.autoInvestMessage": "您的存款已設置為在批准後自動投資於 {asset}。",
       "cryptoDepositModal.networkLabel": "支付網路",
       "cryptoDepositModal.next": "下一步",
       "cryptoDepositModal.step2.title": "步驟 2：進行支付",
@@ -771,6 +786,7 @@ export const locales = {
       "admin.settings.rankConfigTitle": "等級設定",
       "admin.settings.minAccounts": "最低活躍帳戶數",
       "admin.settings.newlyQualified": "最低新合格人數 (每月)",
+      "admin.settings.minTotalInvestment": "最低網絡總投資額",
       "admin.settings.fixedBonus": "固定獎金 (USDT)",
       "admin.settings.runManualCycle": "手動執行月度週期",
       "admin.settings.saveAllSettings": "儲存所有設定",
@@ -933,7 +949,9 @@ export const locales = {
       "admin.approveDeposit.bonusLabel": "添加存款獎金 (USDT)",
       "admin.approveDeposit.bonusHint": "保留為 0 表示沒有獎金。",
       "admin.approveDeposit.errorBonusInvalid": "獎金金額必須為有效的正數。",
-      "admin.approveDeposit.confirmApproval": "確認批准"
+      "admin.approveDeposit.confirmApproval": "確認批准",
+      "admin.approveDeposit.userIntent": "用戶希望投資於：{target}",
+      "admin.approveDeposit.autoExecute": "批准後自動執行投資"
     }
   },
 };

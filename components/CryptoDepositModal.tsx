@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { TreasuryWallets } from '../types';
@@ -14,7 +14,7 @@ type Step = 'amount' | 'payment' | 'confirm';
 type Network = keyof TreasuryWallets;
 
 const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose, initialNetwork }) => {
-  const { treasuryWallets, addCryptoDeposit } = useAppContext();
+  const { treasuryWallets, addCryptoDeposit, projects, investmentPools } = useAppContext();
   const { t } = useLocalization();
   
   const [step, setStep] = useState<Step>('amount');
@@ -22,13 +22,39 @@ const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose, initia
   const [network, setNetwork] = useState<Network>(initialNetwork || 'erc20');
   const [txId, setTxId] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const [selectedTargetId, setSelectedTargetId] = useState<string>('');
 
-  const handleNext = () => setStep('payment');
+  const allAssets = useMemo(() => [
+      ...projects.map(p => ({ id: p.id, name: p.tokenName, type: 'project', min: p.minInvestment })),
+      ...investmentPools.map(p => ({ id: p.id, name: p.name, type: 'pool', min: p.minInvestment }))
+  ], [projects, investmentPools]);
+
+  const selectedAsset = useMemo(() => allAssets.find(a => a.id === selectedTargetId), [selectedTargetId, allAssets]);
+
+  const handleNext = () => {
+      if (selectedAsset && amount < selectedAsset.min) {
+          alert(t('investModal.errorMinInvestment', { projectName: selectedAsset.name, minInvestment: selectedAsset.min.toLocaleString() }));
+          return;
+      }
+      setStep('payment');
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!txId) return;
-    addCryptoDeposit(amount, txId);
+    
+    let reason = '';
+    if (selectedAsset) {
+        // Encode investment intent into the reason field
+        reason = JSON.stringify({
+            intent: 'auto_invest',
+            targetId: selectedAsset.id,
+            targetType: selectedAsset.type,
+            targetName: selectedAsset.name
+        });
+    }
+
+    addCryptoDeposit(amount, txId, reason);
     setStep('confirm');
   };
 
@@ -58,6 +84,36 @@ const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose, initia
                   min="1"
                 />
               </div>
+              
+              <div>
+                <label htmlFor="target" className="block text-sm font-medium text-gray-300 mb-2">
+                  {t('cryptoDepositModal.targetLabel')} <span className="text-gray-500 text-xs">({t('cryptoDepositModal.optional')})</span>
+                </label>
+                <select
+                  id="target"
+                  value={selectedTargetId}
+                  onChange={(e) => {
+                      setSelectedTargetId(e.target.value);
+                      const asset = allAssets.find(a => a.id === e.target.value);
+                      if (asset && amount < asset.min) {
+                          setAmount(asset.min);
+                      }
+                  }}
+                  className="w-full bg-gray-700 text-white rounded-md border-gray-600 px-4 py-2"
+                >
+                  <option value="">{t('cryptoDepositModal.targetWallet')}</option>
+                  <optgroup label={t('reinvestModal.rwaProject')}>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.tokenName} (Min ${p.minInvestment.toLocaleString()})</option>)}
+                  </optgroup>
+                  <optgroup label={t('reinvestModal.legacyFund')}>
+                      {investmentPools.map(p => <option key={p.id} value={p.id}>{p.name} (Min ${p.minInvestment.toLocaleString()})</option>)}
+                  </optgroup>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                    {selectedTargetId ? t('cryptoDepositModal.targetSelectedHint') : t('cryptoDepositModal.targetWalletHint')}
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="network" className="block text-sm font-medium text-gray-300 mb-2">
                   {t('cryptoDepositModal.networkLabel')}
@@ -132,6 +188,11 @@ const CryptoDepositModal: React.FC<CryptoDepositModalProps> = ({ onClose, initia
                  <p className="text-gray-300">
                     {t('cryptoDepositModal.successMessage', { amount: amount })}
                  </p>
+                 {selectedAsset && (
+                     <p className="text-brand-primary mt-4 font-semibold text-sm">
+                         {t('cryptoDepositModal.autoInvestMessage', { asset: selectedAsset.name })}
+                     </p>
+                 )}
                  <button onClick={onClose} className="mt-8 px-6 py-2 rounded-md bg-brand-primary text-white hover:bg-brand-primary/90">
                     {t('cryptoDepositModal.finish')}
                  </button>

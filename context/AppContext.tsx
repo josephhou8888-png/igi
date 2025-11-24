@@ -36,7 +36,7 @@ interface AppContextType {
   currentUser: User | null;
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => void;
-  addCryptoDeposit: (amount: number, txHash: string) => void;
+  addCryptoDeposit: (amount: number, txHash: string, reason?: string) => void;
   addWithdrawal: (amount: number, balance: number) => void;
   updateKycStatus: (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => void;
   toggleFreezeUser: (userId: string) => void;
@@ -65,7 +65,7 @@ interface AppContextType {
   disconnectSolanaWallet: () => void;
   fetchAllBalances: () => Promise<void>;
   // Admin functions
-  approveDeposit: (transactionId: string, bonusAmount?: number) => void;
+  approveDeposit: (transactionId: string, bonusAmount?: number, autoInvestTarget?: { type: 'project' | 'pool', id: string }) => void;
   rejectDeposit: (transactionId: string, reason: string) => void;
   createUser: (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments?: InitialInvestmentData[]) => void;
   updateUserRole: (userId: string, role: 'user' | 'admin') => void;
@@ -451,7 +451,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setUsers(updatedUsers);
         if (currentUser?.id === userId) setCurrentUser(prev => prev ? { ...prev, totalInvestment: prev.totalInvestment + amount } : null);
         
-        alert("Investment created in Demo Mode (Local Only)");
+        // alert("Investment created in Demo Mode (Local Only)");
         return;
     }
 
@@ -516,12 +516,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     executeInvestment(currentUser.id, amount, assetId, type, source);
   }, [currentUser, executeInvestment]);
 
-  const addCryptoDeposit = useCallback(async (amount: number, txHash: string) => {
+  const addCryptoDeposit = useCallback(async (amount: number, txHash: string, reason?: string) => {
       if (!currentUser) return;
       
       if (!supabase) {
           setTransactions(prev => [...prev, {
-              id: `tx-dep-${Date.now()}`, userId: currentUser.id, type: 'Deposit', amount, txHash, date: currentDate.toISOString().split('T')[0], status: 'pending'
+              id: `tx-dep-${Date.now()}`, userId: currentUser.id, type: 'Deposit', amount, txHash, date: currentDate.toISOString().split('T')[0], status: 'pending', reason: reason
           }]);
           alert("Deposit request added locally (Demo Mode)");
           return;
@@ -534,6 +534,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           tx_hash: txHash,
           date: currentDate.toISOString().split('T')[0],
           status: 'pending',
+          reason: reason
       });
       // Realtime subscription will pick up changes
   }, [currentUser, currentDate]);
@@ -840,7 +841,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [solanaWalletAddress, fetchAllBalances]);
 
   // Admin functions
-  const approveDeposit = useCallback(async (transactionId: string, bonusAmount: number = 0) => {
+  const approveDeposit = useCallback(async (transactionId: string, bonusAmount: number = 0, autoInvestTarget?: { type: 'project' | 'pool', id: string }) => {
     const transaction = transactions.find(t => t.id === transactionId);
     if (!transaction) return;
 
@@ -857,6 +858,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 txHash: 'BONUS-DEP'
             }]);
         }
+        // Auto-invest logic for demo
+        if (autoInvestTarget) {
+            setTimeout(() => {
+                executeInvestment(transaction.userId, transaction.amount, autoInvestTarget.id, autoInvestTarget.type, 'deposit');
+            }, 100);
+        }
         return;
     }
     
@@ -872,8 +879,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             tx_hash: `BONUS-${Date.now()}`
         });
     }
+
+    if (autoInvestTarget) {
+        // Execute investment using the deposited amount
+        executeInvestment(transaction.userId, transaction.amount, autoInvestTarget.id, autoInvestTarget.type, 'deposit');
+    }
+
     // Realtime subscription will pick up changes
-  }, [transactions, currentDate]);
+  }, [transactions, currentDate, executeInvestment]);
 
   const rejectDeposit = useCallback(async (transactionId: string, reason: string) => {
     if (!supabase) {

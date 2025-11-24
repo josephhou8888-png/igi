@@ -130,7 +130,7 @@ const PlatformSettings: React.FC = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">{t('admin.settings.rankConfigTitle')}</h3>
                 <div className="space-y-4">
                     {localRanks.sort((a,b) => a.level - b.level).map(rank => (
-                        <div key={rank.level} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center p-3 bg-gray-700 rounded-md">
+                        <div key={rank.level} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center p-3 bg-gray-700 rounded-md">
                             <div className="font-bold text-white text-lg">{rank.name}</div>
                             <div>
                                 <label className="block text-xs text-gray-400">{t('admin.settings.minAccounts')}</label>
@@ -147,6 +147,15 @@ const PlatformSettings: React.FC = () => {
                                     type="number"
                                     value={rank.newlyQualified}
                                     onChange={(e) => handleRankChange(rank.level, 'newlyQualified', e.target.value)}
+                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400">{t('admin.settings.minTotalInvestment')}</label>
+                                <input
+                                    type="number"
+                                    value={rank.minTotalInvestment}
+                                    onChange={(e) => handleRankChange(rank.level, 'minTotalInvestment', e.target.value)}
                                     className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
                                 />
                             </div>
