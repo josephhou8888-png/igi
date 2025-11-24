@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -34,8 +35,8 @@ const AdminDashboard: React.FC = () => {
     const todayStr = currentDate.toISOString().split('T')[0];
     return {
       totalInvested: investments.reduce((sum, inv) => sum + inv.amount, 0),
-      totalUsers: users.filter(u => u.role !== 'admin').length,
-      activeUsers: users.filter(u => u.totalInvestment > 0 && u.role !== 'admin').length,
+      totalUsers: users.length,
+      activeUsers: users.filter(u => u.totalInvestment > 0).length,
       pendingKYC: users.filter(u => u.kycStatus === 'Pending').length,
       newUsersToday: users.filter(u => u.joinDate === todayStr).length,
       investmentsToday: investments

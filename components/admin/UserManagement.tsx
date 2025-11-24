@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -24,10 +25,9 @@ const UserManagement: React.FC = () => {
 
     const filteredUsers = useMemo(() => {
         if (!searchTerm) {
-            return users.filter(u => u.role !== 'admin');
+            return users;
         }
         return users.filter(u =>
-            u.role !== 'admin' &&
             (u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
              u.email.toLowerCase().includes(searchTerm.toLowerCase()))
         );
@@ -41,12 +41,13 @@ const UserManagement: React.FC = () => {
     };
 
     const handleExport = () => {
-        const headers = ["ID", "Name", "Email", "Rank", "Upline ID", "Total Investment", "KYC Status", "Account Status", "Join Date"];
+        const headers = ["ID", "Name", "Role", "Email", "Rank", "Upline ID", "Total Investment", "KYC Status", "Account Status", "Join Date"];
         const csvContent = "data:text/csv;charset=utf-8,"
             + headers.join(",") + "\n"
             + users.map(u => [
                 u.id,
                 `"${u.name}"`,
+                u.role,
                 u.email,
                 `L${u.rank}`,
                 u.uplineId || "None",
@@ -111,7 +112,12 @@ const UserManagement: React.FC = () => {
                                     <td className="px-6 py-4 font-medium text-white flex items-center space-x-3">
                                         <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
                                         <div>
-                                            <p>{user.name}</p>
+                                            <p className="flex items-center gap-2">
+                                                {user.name}
+                                                {user.role === 'admin' && (
+                                                    <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded font-bold">ADMIN</span>
+                                                )}
+                                            </p>
                                             <p className="text-xs text-gray-400">{user.email}</p>
                                         </div>
                                     </td>
