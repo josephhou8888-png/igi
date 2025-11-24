@@ -1,12 +1,13 @@
 
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useLocalization } from '../hooks/useLocalization';
-import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets } from '../types';
+import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from '../types';
 import { 
   INITIAL_RANKS, 
   INITIAL_TEAM_BUILDER_BONUS_RATES, 
   INITIAL_INSTANT_BONUS_RATES, 
   INITIAL_TREASURY_WALLETS, 
+  INITIAL_PLATFORM_SOCIAL_LINKS,
   IGI_TOKEN_MINT_ADDRESS,
   MOCK_USERS,
   MOCK_INVESTMENTS,
@@ -33,6 +34,7 @@ interface AppContextType {
   instantBonusRates: { investor: number, referrer: number, upline: number };
   teamBuilderBonusRates: number[];
   treasuryWallets: TreasuryWallets;
+  socialLinks: PlatformSocialLinks;
   currentUser: User | null;
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
@@ -75,6 +77,7 @@ interface AppContextType {
   updateNewsPost: (post: NewsPost) => Promise<void>;
   updateBonusRates: (newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => void;
   updateTreasuryWallets: (wallets: TreasuryWallets) => void;
+  updateSocialLinks: (links: PlatformSocialLinks) => void;
   seedDatabase: () => Promise<void>;
   // Auth functions
   login: (email: string, password: string) => Promise<void>;
@@ -121,6 +124,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const [instantBonusRates, setInstantBonusRates] = useState(() => getStoredData('igi_instantRates', INITIAL_INSTANT_BONUS_RATES));
   const [teamBuilderBonusRates, setTeamBuilderBonusRates] = useState(() => getStoredData('igi_teamRates', INITIAL_TEAM_BUILDER_BONUS_RATES));
   const [treasuryWallets, setTreasuryWallets] = useState<TreasuryWallets>(() => getStoredData('igi_wallets', INITIAL_TREASURY_WALLETS));
+  const [socialLinks, setSocialLinks] = useState<PlatformSocialLinks>(() => getStoredData('igi_socials', INITIAL_PLATFORM_SOCIAL_LINKS));
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -317,6 +321,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   useEffect(() => { setStoredData('igi_instantRates', instantBonusRates) }, [instantBonusRates]);
   useEffect(() => { setStoredData('igi_teamRates', teamBuilderBonusRates) }, [teamBuilderBonusRates]);
   useEffect(() => { setStoredData('igi_wallets', treasuryWallets) }, [treasuryWallets]);
+  useEffect(() => { setStoredData('igi_socials', socialLinks) }, [socialLinks]);
 
 
   // --- AUTHENTICATION LOGIC ---
@@ -952,6 +957,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setTreasuryWallets(wallets);
   }, []);
 
+  const updateSocialLinks = useCallback((links: PlatformSocialLinks) => {
+    setSocialLinks(links);
+  }, []);
+
   const seedDatabase = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
@@ -1009,7 +1018,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   return (
     <AppContext.Provider value={{
       users, investments, transactions, bonuses, ranks, news, notifications, projects, investmentPools,
-      instantBonusRates, teamBuilderBonusRates, treasuryWallets,
+      instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks,
       currentUser, currentDate,
       addInvestmentFromBalance, addCryptoDeposit, addWithdrawal, updateKycStatus, toggleFreezeUser,
       markNotificationsAsRead, updateUser, deleteUser, deleteInvestment, updateRankSettings,
@@ -1019,7 +1028,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
       approveDeposit, rejectDeposit,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
-      updateNewsPost, updateBonusRates, updateTreasuryWallets,
+      updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks,
       seedDatabase,
       login, signup, logout, loading,
       isDemoMode: !supabase

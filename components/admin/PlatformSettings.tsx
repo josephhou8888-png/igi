@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
-import { Rank, TreasuryWallets } from '../../types';
+import { Rank, TreasuryWallets, PlatformSocialLinks } from '../../types';
+import { TelegramIcon, WhatsAppIcon, TwitterIcon, FacebookIcon, InstagramIcon, YoutubeIcon, DiscordIcon } from '../../constants';
 
 const PlatformSettings: React.FC = () => {
     const { 
@@ -10,6 +11,7 @@ const PlatformSettings: React.FC = () => {
         runMonthlyCycle, currentDate, 
         instantBonusRates, teamBuilderBonusRates, updateBonusRates,
         treasuryWallets, updateTreasuryWallets,
+        socialLinks, updateSocialLinks,
         seedDatabase, isDemoMode
     } = useAppContext();
     const { t } = useLocalization();
@@ -17,13 +19,15 @@ const PlatformSettings: React.FC = () => {
     const [localInstantRates, setLocalInstantRates] = useState(instantBonusRates);
     const [localTeamRates, setLocalTeamRates] = useState(teamBuilderBonusRates);
     const [localWallets, setLocalWallets] = useState<TreasuryWallets>(treasuryWallets);
+    const [localSocialLinks, setLocalSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
 
     useEffect(() => {
         setLocalRanks(ranks);
         setLocalInstantRates(instantBonusRates);
         setLocalTeamRates(teamBuilderBonusRates);
         setLocalWallets(treasuryWallets);
-    }, [ranks, instantBonusRates, teamBuilderBonusRates, treasuryWallets]);
+        setLocalSocialLinks(socialLinks);
+    }, [ranks, instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks]);
 
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
         const updatedRanks = localRanks.map(rank => {
@@ -49,10 +53,15 @@ const PlatformSettings: React.FC = () => {
         setLocalWallets(prev => ({ ...prev, [chain]: value }));
     };
 
+    const handleSocialLinkChange = (key: keyof PlatformSocialLinks, value: string) => {
+        setLocalSocialLinks(prev => ({ ...prev, [key]: value }));
+    };
+
     const handleSave = () => {
         updateRankSettings(localRanks);
         updateBonusRates(localInstantRates, localTeamRates);
         updateTreasuryWallets(localWallets);
+        updateSocialLinks(localSocialLinks);
     };
 
     const handleRunCycle = () => {
@@ -84,6 +93,61 @@ const PlatformSettings: React.FC = () => {
                     <div>
                         <label className="block text-sm font-medium text-gray-300">{t('admin.settings.solana')}</label>
                         <input type="text" value={localWallets.solana} onChange={e => handleWalletChange('solana', e.target.value)} className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm font-mono" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h3 className="text-lg font-semibold text-white mb-4">{t('admin.settings.socialLinksTitle')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <TelegramIcon className="w-5 h-5 text-blue-400" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.telegram')}</label>
+                            <input type="text" value={localSocialLinks.telegram} onChange={e => handleSocialLinkChange('telegram', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://t.me/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <WhatsAppIcon className="w-5 h-5 text-green-400" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.whatsapp')}</label>
+                            <input type="text" value={localSocialLinks.whatsapp} onChange={e => handleSocialLinkChange('whatsapp', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://wa.me/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <TwitterIcon className="w-5 h-5 text-white" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.twitter')}</label>
+                            <input type="text" value={localSocialLinks.twitter} onChange={e => handleSocialLinkChange('twitter', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://twitter.com/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <FacebookIcon className="w-5 h-5 text-blue-600" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.facebook')}</label>
+                            <input type="text" value={localSocialLinks.facebook} onChange={e => handleSocialLinkChange('facebook', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://facebook.com/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <InstagramIcon className="w-5 h-5 text-pink-500" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.instagram')}</label>
+                            <input type="text" value={localSocialLinks.instagram} onChange={e => handleSocialLinkChange('instagram', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://instagram.com/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <YoutubeIcon className="w-5 h-5 text-red-500" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.youtube')}</label>
+                            <input type="text" value={localSocialLinks.youtube} onChange={e => handleSocialLinkChange('youtube', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://youtube.com/..." />
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-700 p-2 rounded-md">
+                        <DiscordIcon className="w-5 h-5 text-indigo-400" />
+                        <div className="flex-grow">
+                            <label className="block text-xs text-gray-400">{t('admin.settings.social.discord')}</label>
+                            <input type="text" value={localSocialLinks.discord} onChange={e => handleSocialLinkChange('discord', e.target.value)} className="w-full bg-transparent text-white text-sm focus:outline-none" placeholder="https://discord.gg/..." />
+                        </div>
                     </div>
                 </div>
             </div>

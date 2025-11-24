@@ -297,6 +297,14 @@ export const locales = {
       "admin.settings.trc20": "TRC20 (Tron)",
       "admin.settings.polygon": "Polygon",
       "admin.settings.solana": "Solana",
+      "admin.settings.socialLinksTitle": "Social Media Links",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord",
       "admin.settings.bonusConfigTitle": "Bonus Configuration",
       "admin.settings.instantBonus": "Instant Bonus",
       "admin.settings.investor": "Investor",
@@ -539,7 +547,15 @@ export const locales = {
       "admin.investFromBalance.source": "來源錢包",
       "admin.investFromBalance.depositBalance": "存款錢包 (${amount})",
       "admin.investFromBalance.profitBalance": "利潤錢包 (${amount})",
-      "admin.investFromBalance.confirm": "執行投資"
+      "admin.investFromBalance.confirm": "執行投資",
+      "admin.settings.socialLinksTitle": "社群媒體連結",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord"
     } 
   },
   'zh-CN': {
@@ -553,7 +569,15 @@ export const locales = {
       "admin.investFromBalance.source": "来源钱包",
       "admin.investFromBalance.depositBalance": "存款钱包 (${amount})",
       "admin.investFromBalance.profitBalance": "利润钱包 (${amount})",
-      "admin.investFromBalance.confirm": "执行投资"
+      "admin.investFromBalance.confirm": "执行投资",
+      "admin.settings.socialLinksTitle": "社交媒体链接",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord"
     }
   },
   ja: {
@@ -567,7 +591,15 @@ export const locales = {
       "admin.investFromBalance.source": "ソースウォレット",
       "admin.investFromBalance.depositBalance": "入金ウォレット (${amount})",
       "admin.investFromBalance.profitBalance": "利益ウォレット (${amount})",
-      "admin.investFromBalance.confirm": "投資を実行"
+      "admin.investFromBalance.confirm": "投資を実行",
+      "admin.settings.socialLinksTitle": "ソーシャルメディアリンク",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord"
     }
   },
   es: {
@@ -581,7 +613,15 @@ export const locales = {
       "admin.investFromBalance.source": "Billetera de Origen",
       "admin.investFromBalance.depositBalance": "Billetera de Depósito (${amount})",
       "admin.investFromBalance.profitBalance": "Billetera de Beneficios (${amount})",
-      "admin.investFromBalance.confirm": "Ejecutar Inversión"
+      "admin.investFromBalance.confirm": "Ejecutar Inversión",
+      "admin.settings.socialLinksTitle": "Enlaces de Redes Sociales",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord"
     }
   },
   fr: {
@@ -595,7 +635,15 @@ export const locales = {
       "admin.investFromBalance.source": "Portefeuille Source",
       "admin.investFromBalance.depositBalance": "Portefeuille Dépôt (${amount})",
       "admin.investFromBalance.profitBalance": "Portefeuille Bénéfices (${amount})",
-      "admin.investFromBalance.confirm": "Exécuter Investissement"
+      "admin.investFromBalance.confirm": "Exécuter Investissement",
+      "admin.settings.socialLinksTitle": "Liens Réseaux Sociaux",
+      "admin.settings.social.telegram": "Telegram",
+      "admin.settings.social.whatsapp": "WhatsApp",
+      "admin.settings.social.twitter": "Twitter/X",
+      "admin.settings.social.facebook": "Facebook",
+      "admin.settings.social.instagram": "Instagram",
+      "admin.settings.social.youtube": "YouTube",
+      "admin.settings.social.discord": "Discord"
     }
   }
 };

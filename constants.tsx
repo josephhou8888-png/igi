@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Rank, User, Investment, Transaction, Bonus, NewsPost, Achievement, MarketingResource, Project, InvestmentPool, TreasuryWallets } from './types';
+import { Rank, User, Investment, Transaction, Bonus, NewsPost, Achievement, MarketingResource, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from './types';
 
 // SVG Icons as React Components
 export const HomeIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -86,6 +86,18 @@ export const TwitterIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor" {...props}><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.028C18.343 21.128 22 16.991 22 12z"/></svg>
 );
+export const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+);
+export const YoutubeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.25z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+);
+export const TelegramIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21.68 3.32c-.28-.23-.65-.31-1-.22L2.75 8.57c-.65.2-1.03.88-.85 1.53.1.36.39.65.75.75l5.03 1.43 1.93 5.93c.17.53.72.84 1.27.72.21-.05.4-.16.55-.31l2.32-2.32 4.15 3.06c.23.17.52.26.8.26.21 0 .41-.05.6-.15.43-.22.73-.64.8-1.12l3-14c.1-.48-.1-.97-.52-1.25zM9.88 16.3l-1.2-3.7 9.6-5.9-7.8 7.1.6 2.5zm5.2-2.5l-4.7-3.5 8.8-6.5-4.1 10z"/></svg>
+);
+export const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18.8 4.5a17 17 0 0 0-4.3-1.3.1.1 0 0 0-.1.1 12 12 0 0 0-.6 1.3 15.6 15.6 0 0 0-5.6 0 12 12 0 0 0-.6-1.3.1.1 0 0 0-.1-.1 17 17 0 0 0-4.3 1.3.1.1 0 0 0 0 .1A20 20 0 0 0 3.6 18.4a.1.1 0 0 0 0 .1 17 17 0 0 0 5.3 2.7.1.1 0 0 0 .1-.1 12.6 12.6 0 0 0 1-2 .1.1 0 0 0-.1-.1 10 10 0 0 1-1.5-.8.1.1 0 0 1 0-.1c.1-.1.3-.2.4-.3a.1.1 0 0 1 .1 0 13.3 13.3 0 0 0 10.3 0 .1.1 0 0 1 .1 0c.1.1.3.2.4.3a.1.1 0 0 1 0 .1 10 10 0 0 1-1.5.8.1.1 0 0 0-.1.1 12.6 12.6 0 0 0 1 2 .1.1 0 0 0 .1.1 17 17 0 0 0 5.3-2.7.1.1 0 0 0 0-.1 20 20 0 0 0-2.7-13.8.1.1 0 0 0 0-.1zM9 14.8a2 2 0 1 1 0-3.9 2 2 0 0 1 0 3.9zm6 0a2 2 0 1 1 0-3.9 2 2 0 0 1 0 3.9z"/></svg>
+);
 
 
 // New Icons for Achievements
@@ -145,6 +157,16 @@ export const INITIAL_TREASURY_WALLETS: TreasuryWallets = {
   trc20: 'TX7xWvJawKBbBUSo5S22yv3xJeZWb4wWpA',
   polygon: '0x7D1AfA7B718fb893dB30A3aBc0C458d9C7848fB8',
   solana: '9v81P2i9Z3b8qY2k4X5a7j6b3c9d1e2f3g4h5i6j7k',
+};
+
+export const INITIAL_PLATFORM_SOCIAL_LINKS: PlatformSocialLinks = {
+  telegram: '',
+  whatsapp: '',
+  twitter: '',
+  facebook: '',
+  instagram: '',
+  youtube: '',
+  discord: ''
 };
 
 export const INITIAL_INSTANT_BONUS_RATES = {

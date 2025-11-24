@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon } from '../constants';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -11,7 +11,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances } = useAppContext();
+  const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances } = useAppContext();
   const { t } = useLocalization();
   const [inviteEmail, setInviteEmail] = useState('');
   
@@ -41,6 +41,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 
       return { incomeToday: today, incomeThisMonth: thisMonth, lifetimeEarnings: lifetime };
   }, [bonuses, currentUser, currentDate]);
+
+  const { depositBalance } = useMemo(() => {
+    if (!currentUser) return { depositBalance: 0 };
+    return getUserBalances(currentUser.id);
+  }, [currentUser, getUserBalances]);
 
   const totalProfits = useMemo(() => {
     if (!currentUser) return 0;
@@ -178,10 +183,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         <Card title={t('dashboard.cards.totalProfits')} value={`$${totalProfits.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext={t('dashboard.cards.totalProfitsSubtext')} icon={<TrendingUpIcon className="w-6 h-6 text-green-400" />} />
       </div>
 
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card title={t('dashboard.cards.totalInvestment')} value={`$${currentUser.totalInvestment.toLocaleString()}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-gray-300" />}/>
+        <Card title={t('wallet.depositBalance')} value={`$${depositBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<WalletIcon className="w-6 h-6 text-blue-400" />} />
         
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 lg:col-span-2">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:col-span-2 lg:col-span-2">
           <h3 className="text-lg font-semibold text-white">{t('dashboard.referral.title')}</h3>
           <div className="bg-gray-700 p-4 rounded-lg">
             <p className="text-sm text-gray-400">{t('dashboard.referral.subtitle')}</p>
@@ -329,3 +335,4 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 };
 
 export default Dashboard;
+    

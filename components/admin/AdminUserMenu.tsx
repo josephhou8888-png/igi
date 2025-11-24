@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { User } from '../../types';
 import { MoreVerticalIcon, DollarSignIcon, EditIcon, TrashIcon, ZapIcon, ZapOffIcon, ShieldIcon, AwardIcon, PlusCircleIcon, WalletIcon } from '../../constants';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -18,20 +19,58 @@ interface AdminUserMenuProps {
 
 const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onToggleFreeze, onEdit, onDelete, onChangeRole, onAdjustRank, onAddInvestment, onInvestFromBalance }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { t } = useLocalization();
 
+  // Calculate position and open menu
+  const toggleMenu = () => {
+    if (isOpen) {
+        setIsOpen(false);
+        return;
+    }
+
+    if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const menuHeight = 350; // Approx height of menu
+        
+        // Determine if menu should open up or down based on space
+        let top = rect.bottom + window.scrollY;
+        if (rect.bottom + menuHeight > windowHeight) {
+            top = rect.top + window.scrollY - menuHeight;
+        }
+
+        // Align to the left of the button (menu width approx 224px / w-56)
+        const left = rect.right + window.scrollX - 224; 
+
+        setMenuPosition({ top, left });
+        setIsOpen(true);
+    }
+  };
+
   useEffect(() => {
+    const handleScroll = () => {
+        if (isOpen) setIsOpen(false);
+    };
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        // We don't check the menu ref here because the menu is in a Portal
+        // Ideally we would check the portal content too, but closing on any click outside the button is safe UI behavior
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+
+    if (isOpen) {
+        window.addEventListener('scroll', handleScroll, true);
+        document.addEventListener('mousedown', handleClickOutside);
+    }
+
     return () => {
+      window.removeEventListener('scroll', handleScroll, true);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isOpen]);
 
   const handleActionClick = (action: () => void) => {
     action();
@@ -63,15 +102,20 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   );
 
   return (
-    <div className="relative inline-block text-left" ref={menuRef}>
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
+        onClick={toggleMenu}
         className="p-2 text-gray-400 rounded-full hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
       >
         <MoreVerticalIcon className="w-5 h-5" />
       </button>
-      {isOpen && (
-        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5 z-10">
+      
+      {isOpen && createPortal(
+        <div 
+            className="fixed z-50 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+        >
           <ul className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
             <MenuItem
               icon={<PlusCircleIcon className="w-5 h-5 text-teal-400" />}
@@ -122,9 +166,10 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
               className="text-red-400"
             />
           </ul>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

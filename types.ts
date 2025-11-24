@@ -160,6 +160,16 @@ export interface TreasuryWallets {
   solana: string;
 }
 
+export interface PlatformSocialLinks {
+  telegram: string;
+  whatsapp: string;
+  twitter: string;
+  facebook: string;
+  instagram: string;
+  youtube: string;
+  discord: string;
+}
+
 
 export enum View {
   DASHBOARD = 'dashboard',
