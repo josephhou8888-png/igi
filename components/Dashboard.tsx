@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+
+import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon } from '../constants';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -12,6 +13,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances } = useAppContext();
   const { t } = useLocalization();
+  const [inviteEmail, setInviteEmail] = useState('');
   
   if (!currentUser) return <div>{t('dashboard.loading')}</div>;
 
@@ -95,6 +97,43 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       }));
   }, [bonuses, currentUser]);
   
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(currentUser.referralCode);
+    alert(t('dashboard.referral.copied'));
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: t('dashboard.share.title'),
+          text: t('dashboard.share.text', { referralCode: currentUser.referralCode }),
+          url: window.location.origin,
+        });
+      } catch (error) {
+        console.error('Error sharing referral code:', error);
+      }
+    } else {
+      alert(t('dashboard.share.notSupported'));
+    }
+  };
+
+  const handleInvite = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    
+    const referralLink = `${window.location.origin}?ref=${currentUser.referralCode}`;
+    const subject = t('dashboard.referral.emailSubject');
+    const body = t('dashboard.referral.emailBody', { 
+        referralLink: referralLink
+    });
+    
+    const mailtoLink = `mailto:${inviteEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+    
+    setInviteEmail('');
+    alert(t('dashboard.referral.inviteSentAction'));
+  }
 
   const Card: React.FC<{ title: string; value: string | number; subtext?: string, icon: React.ReactNode }> = ({ title, value, subtext, icon }) => (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4">
@@ -133,6 +172,46 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card title={t('dashboard.cards.totalInvestment')} value={`$${currentUser.totalInvestment.toLocaleString()}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-gray-300" />}/>
+        
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 lg:col-span-2">
+          <h3 className="text-lg font-semibold text-white">{t('dashboard.referral.title')}</h3>
+          <div className="bg-gray-700 p-4 rounded-lg">
+            <p className="text-sm text-gray-400">{t('dashboard.referral.subtitle')}</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-lg font-mono text-white break-all">{currentUser.referralCode}</p>
+              <div className="flex items-center space-x-3">
+                <button onClick={copyToClipboard} className="text-gray-400 hover:text-white" title={t('dashboard.referral.copy')}>
+                  <CopyIcon className="w-5 h-5" />
+                </button>
+                <button onClick={handleShare} className="text-gray-400 hover:text-white" title={t('dashboard.referral.share')}>
+                  <ShareIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Invite via Email Section */}
+            <div className="mt-4 pt-4 border-t border-gray-600">
+                <p className="text-sm text-gray-300 mb-2">{t('dashboard.referral.inviteTitle')}</p>
+                <form onSubmit={handleInvite} className="flex gap-2">
+                    <input 
+                        type="email" 
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder={t('dashboard.referral.emailPlaceholder')}
+                        className="flex-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-md px-3 py-2 focus:ring-brand-primary focus:border-brand-primary outline-none"
+                        required
+                    />
+                    <button 
+                        type="submit"
+                        className="bg-brand-primary hover:bg-brand-primary/90 text-white p-2 rounded-md transition-colors flex items-center justify-center"
+                        title={t('dashboard.referral.send')}
+                    >
+                        <MailIcon className="w-5 h-5" />
+                    </button>
+                </form>
+            </div>
+          </div>
+        </div>
       </div>
 
       {solanaWalletAddress && (
