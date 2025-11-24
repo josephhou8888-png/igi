@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
+import ReinvestModal from './ReinvestModal';
 
 interface ProjectDetailProps {
   projectId: string;
@@ -18,8 +19,9 @@ const DetailItem: React.FC<{ label: string, value: string | number, isCurrency?:
 );
 
 const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
-  const { projects } = useAppContext();
+  const { projects, currentUser, getUserBalances } = useAppContext();
   const { t } = useLocalization();
+  const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
 
   const project = projects.find(p => p.id === projectId);
 
@@ -33,6 +35,8 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       </div>
     );
   }
+
+  const { depositBalance, profitBalance } = currentUser ? getUserBalances(currentUser.id) : { depositBalance: 0, profitBalance: 0 };
 
   const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-gray-800 p-6 rounded-lg">
@@ -55,6 +59,16 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
             <div className="flex-1">
               <h2 className="text-4xl font-extrabold text-white">{project.tokenName}</h2>
               <p className="text-lg text-gray-400 mt-2">{project.assetDescription}</p>
+              
+              <div className="mt-6">
+                  <button 
+                      onClick={() => setIsInvestModalOpen(true)}
+                      className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 flex items-center"
+                  >
+                      {t('reinvestModal.reinvestNow')}
+                  </button>
+              </div>
+
                <div className="mt-6 bg-gray-800 border-l-4 border-brand-primary p-4 rounded-r-lg">
                     <h4 className="font-bold text-white">{t('reinvestModal.rwaProject')}</h4>
                     <p className="text-sm text-gray-300 mt-1">{t('projectDetail.reinvestmentNote')}</p>
@@ -101,6 +115,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
         </Section>
 
       </div>
+      
+      {isInvestModalOpen && (
+        <ReinvestModal 
+            onClose={() => setIsInvestModalOpen(false)} 
+            depositBalance={depositBalance} 
+            profitBalance={profitBalance}
+            initialAssetId={project.id}
+        />
+      )}
     </>
   );
 };

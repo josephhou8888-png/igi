@@ -35,28 +35,28 @@ interface AppContextType {
   treasuryWallets: TreasuryWallets;
   currentUser: User | null;
   currentDate: Date;
-  addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => void;
-  addCryptoDeposit: (amount: number, txHash: string, reason?: string) => void;
-  addWithdrawal: (amount: number, balance: number) => void;
-  updateKycStatus: (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => void;
-  toggleFreezeUser: (userId: string) => void;
-  markNotificationsAsRead: () => void;
-  updateUser: (updatedUser: User) => void;
-  deleteUser: (userId: string) => void;
-  deleteInvestment: (investmentId: string) => void;
+  addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
+  addCryptoDeposit: (amount: number, txHash: string, reason?: string) => Promise<void>;
+  addWithdrawal: (amount: number, balance: number) => Promise<void>;
+  updateKycStatus: (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => Promise<void>;
+  toggleFreezeUser: (userId: string) => Promise<void>;
+  markNotificationsAsRead: () => Promise<void>;
+  updateUser: (updatedUser: User) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
+  deleteInvestment: (investmentId: string) => Promise<void>;
   updateRankSettings: (updatedRanks: Rank[]) => void;
-  addManualTransaction: (userId: string, type: 'Manual Bonus' | 'Manual Deduction', amount: number, reason: string) => void;
-  addNewsPost: (post: Omit<NewsPost, 'id'>) => void;
-  deleteNewsPost: (postId: string) => void;
+  addManualTransaction: (userId: string, type: 'Manual Bonus' | 'Manual Deduction', amount: number, reason: string) => Promise<void>;
+  addNewsPost: (post: Omit<NewsPost, 'id'>) => Promise<void>;
+  deleteNewsPost: (postId: string) => Promise<void>;
   runMonthlyCycle: (cycleDate: Date) => void;
   advanceDate: (days: number) => void;
-  addProject: (project: Partial<Omit<Project, 'id'>>) => void;
-  updateProject: (project: Project) => void;
-  deleteProject: (projectId: string) => void;
-  addInvestmentPool: (pool: Omit<InvestmentPool, 'id'>) => void;
-  updateInvestmentPool: (pool: InvestmentPool) => void;
-  deleteInvestmentPool: (poolId: string) => void;
-  adjustUserRank: (userId: string, newRank: number, reason: string) => void;
+  addProject: (project: Partial<Omit<Project, 'id'>>) => Promise<void>;
+  updateProject: (project: Project) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
+  addInvestmentPool: (pool: Omit<InvestmentPool, 'id'>) => Promise<void>;
+  updateInvestmentPool: (pool: InvestmentPool) => Promise<void>;
+  deleteInvestmentPool: (poolId: string) => Promise<void>;
+  adjustUserRank: (userId: string, newRank: number, reason: string) => Promise<void>;
   getUserBalances: (userId: string) => { depositBalance: number, profitBalance: number };
   solanaWalletAddress: string | null;
   igiTokenBalance: number | null;
@@ -65,14 +65,14 @@ interface AppContextType {
   disconnectSolanaWallet: () => void;
   fetchAllBalances: () => Promise<void>;
   // Admin functions
-  approveDeposit: (transactionId: string, bonusAmount?: number, autoInvestTarget?: { type: 'project' | 'pool', id: string }) => void;
-  rejectDeposit: (transactionId: string, reason: string) => void;
-  createUser: (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments?: InitialInvestmentData[]) => void;
-  updateUserRole: (userId: string, role: 'user' | 'admin') => void;
-  addInvestmentForUser: (userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => void;
-  confirmCryptoInvestment: (userId: string, amount: number, assetId: string, type: 'project' | 'pool') => void;
-  updateInvestment: (investment: Investment) => void;
-  updateNewsPost: (post: NewsPost) => void;
+  approveDeposit: (transactionId: string, bonusAmount?: number, autoInvestTarget?: { type: 'project' | 'pool', id: string }) => Promise<void>;
+  rejectDeposit: (transactionId: string, reason: string) => Promise<void>;
+  createUser: (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments?: InitialInvestmentData[]) => Promise<void>;
+  updateUserRole: (userId: string, role: 'user' | 'admin') => Promise<void>;
+  addInvestmentForUser: (userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
+  confirmCryptoInvestment: (userId: string, amount: number, assetId: string, type: 'project' | 'pool') => Promise<void>;
+  updateInvestment: (investment: Investment) => Promise<void>;
+  updateNewsPost: (post: NewsPost) => Promise<void>;
   updateBonusRates: (newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => void;
   updateTreasuryWallets: (wallets: TreasuryWallets) => void;
   seedDatabase: () => Promise<void>;
@@ -307,11 +307,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             if (roleChanged || frozenChanged || rankChanged) {
                 console.log(`Syncing user profile for ${currentUser.email}`);
                 setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
-                
-                if (roleChanged) {
-                    // Optional: Alert user if role specifically changes
-                    // alert(`Your account role has been updated to: ${updatedProfile.role}`);
-                }
             }
         }
     }
@@ -450,8 +445,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         const updatedUsers = users.map(u => u.id === userId ? { ...u, totalInvestment: u.totalInvestment + amount } : u);
         setUsers(updatedUsers);
         if (currentUser?.id === userId) setCurrentUser(prev => prev ? { ...prev, totalInvestment: prev.totalInvestment + amount } : null);
-        
-        // alert("Investment created in Demo Mode (Local Only)");
         return;
     }
 
@@ -508,12 +501,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
 
-    // Realtime subscription will pick up changes
-  }, [users, currentDate, projects, investmentPools, instantBonusRates, currentUser]);
+    await refreshData();
+  }, [users, currentDate, projects, investmentPools, instantBonusRates, currentUser, refreshData]);
 
-  const addInvestmentFromBalance = useCallback((amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
+  const addInvestmentFromBalance = useCallback(async (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
     if (!currentUser) return;
-    executeInvestment(currentUser.id, amount, assetId, type, source);
+    await executeInvestment(currentUser.id, amount, assetId, type, source);
   }, [currentUser, executeInvestment]);
 
   const addCryptoDeposit = useCallback(async (amount: number, txHash: string, reason?: string) => {
@@ -536,8 +529,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           status: 'pending',
           reason: reason
       });
-      // Realtime subscription will pick up changes
-  }, [currentUser, currentDate]);
+      await refreshData();
+  }, [currentUser, currentDate, refreshData]);
 
 
   const addWithdrawal = useCallback(async (amount: number, balance: number) => {
@@ -558,8 +551,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       user_id: currentUser.id, type: 'Withdrawal', amount,
       date: currentDate.toISOString().split('T')[0], tx_hash: `0x...wdw${Date.now().toString().slice(-4)}`,
     });
-    // Realtime subscription will pick up changes
-  }, [currentUser, currentDate]);
+    await refreshData();
+  }, [currentUser, currentDate, refreshData]);
 
   const updateKycStatus = useCallback(async (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => {
       if (!supabase) {
@@ -570,13 +563,13 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       
       await supabase.from('profiles').update({ kyc_status: status }).eq('id', userId);
       if (status === 'Verified' || status === 'Rejected') {
-          addNotification({
+          await addNotification({
               userId, type: 'KYC Update', message: `Your KYC application has been ${status}.`,
               date: currentDate.toISOString().split('T')[0], read: false,
           });
       }
-      // Realtime subscription will pick up changes
-  }, [currentDate, addNotification, currentUser]);
+      await refreshData();
+  }, [currentDate, addNotification, currentUser, refreshData]);
 
   const toggleFreezeUser = useCallback(async (userId: string) => {
     const user = users.find(u => u.id === userId);
@@ -586,17 +579,17 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('profiles').update({ is_frozen: !user.isFrozen }).eq('id', userId);
-        // Realtime subscription will pick up changes
+        await refreshData();
     }
-  }, [users]);
+  }, [users, refreshData]);
 
   const markNotificationsAsRead = useCallback(async () => {
     if(!currentUser) return;
     if (!supabase) return; 
     await supabase.from('bonuses').update({ read: true }).eq('user_id', currentUser.id);
     await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
-    // Realtime subscription will pick up changes
-  }, [currentUser]);
+    await refreshData();
+  }, [currentUser, refreshData]);
 
   const updateUser = useCallback(async (updatedUser: User) => {
     if (!supabase) {
@@ -609,8 +602,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         avatar: updatedUser.avatar,
         wallet: updatedUser.wallet
     }).eq('id', updatedUser.id);
-    // Realtime subscription will pick up changes
-  }, [currentUser]);
+    await refreshData();
+  }, [currentUser, refreshData]);
 
   const deleteUser = useCallback(async (userId: string) => {
     if(window.confirm('Are you sure?')) {
@@ -619,9 +612,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('profiles').delete().eq('id', userId); 
-        // Realtime subscription will pick up changes
+        await refreshData();
     }
-  }, []);
+  }, [refreshData]);
 
   const deleteInvestment = useCallback(async (investmentId: string) => {
      if(window.confirm('Are you sure?')) {
@@ -630,9 +623,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('investments').delete().eq('id', investmentId);
-        // Realtime subscription will pick up changes
+        await refreshData();
      }
-  }, []);
+  }, [refreshData]);
 
   const updateRankSettings = useCallback((updatedRanks: Rank[]) => {
     setRanks(updatedRanks);
@@ -647,8 +640,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('transactions').insert({ user_id: userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` });
-    // Realtime subscription will pick up changes
-  }, [currentDate]);
+    await refreshData();
+  }, [currentDate, refreshData]);
   
   const addNewsPost = useCallback(async (post: Omit<NewsPost, 'id'>) => {
     if (!supabase) {
@@ -656,8 +649,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('news').insert(post);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const deleteNewsPost = useCallback(async (postId: string) => {
     if(window.confirm('Are you sure?')) {
@@ -666,9 +659,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             return;
         }
         await supabase.from('news').delete().eq('id', postId);
-        // Realtime subscription will pick up changes
+        await refreshData();
     }
-  }, []);
+  }, [refreshData]);
 
   // --- SIMULATION LOGIC ---
   const runMonthlyCycle = useCallback((cycleDate: Date) => {
@@ -694,22 +687,22 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         min_investment: project.minInvestment,
         // ... others
     });
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const updateProject = useCallback(async (project: Project) => {
     if (!supabase) return;
     await supabase.from('projects').update({
         token_name: project.tokenName,
     }).eq('id', project.id);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const deleteProject = useCallback(async (projectId: string) => {
       if (!supabase) return;
       await supabase.from('projects').delete().eq('id', projectId);
-      // Realtime subscription will pick up changes
-  }, []);
+      await refreshData();
+  }, [refreshData]);
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
     if (!supabase) return;
@@ -719,8 +712,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         apy: pool.apy,
         min_investment: pool.minInvestment
     });
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
     if (!supabase) return;
@@ -730,14 +723,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         apy: pool.apy,
         min_investment: pool.minInvestment
     }).eq('id', pool.id);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const deleteInvestmentPool = useCallback(async (poolId: string) => {
       if (!supabase) return;
       await supabase.from('investment_pools').delete().eq('id', poolId);
-      // Realtime subscription will pick up changes
-  }, []);
+      await refreshData();
+  }, [refreshData]);
 
 
   const adjustUserRank = useCallback(async (userId: string, newRank: number, reason: string) => {
@@ -746,15 +739,15 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('profiles').update({ rank: newRank }).eq('id', userId);
-    addNotification({
+    await addNotification({
         userId,
         type: 'Rank Promotion',
         message: `An admin adjusted your rank to L${newRank}. Reason: ${reason}`,
         date: currentDate.toISOString().split('T')[0],
         read: false,
     });
-    // Realtime subscription will pick up changes
-  }, [addNotification, currentDate]);
+    await refreshData();
+  }, [addNotification, currentDate, refreshData]);
 
   const getUserBalances = useCallback((userId: string) => {
       const userTransactions = transactions.filter(t => t.userId === userId);
@@ -882,11 +875,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
     if (autoInvestTarget) {
         // Execute investment using the deposited amount
-        executeInvestment(transaction.userId, transaction.amount, autoInvestTarget.id, autoInvestTarget.type, 'deposit');
+        await executeInvestment(transaction.userId, transaction.amount, autoInvestTarget.id, autoInvestTarget.type, 'deposit');
     }
 
-    // Realtime subscription will pick up changes
-  }, [transactions, currentDate, executeInvestment]);
+    await refreshData();
+  }, [transactions, currentDate, executeInvestment, refreshData]);
 
   const rejectDeposit = useCallback(async (transactionId: string, reason: string) => {
     if (!supabase) {
@@ -894,8 +887,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', transactionId);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const createUser = useCallback(async (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments: InitialInvestmentData[] = []) => {
     if (!supabase) {
@@ -920,15 +913,15 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('profiles').update({ role: role.toLowerCase().trim() }).eq('id', userId);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
-  const addInvestmentForUser = useCallback((userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment' = 'deposit') => {
-    executeInvestment(userId, amount, assetId, type, source);
+  const addInvestmentForUser = useCallback(async (userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment' = 'deposit') => {
+    await executeInvestment(userId, amount, assetId, type, source);
   }, [executeInvestment]);
 
-  const confirmCryptoInvestment = useCallback((userId: string, amount: number, assetId: string, type: 'project' | 'pool') => {
-    executeInvestment(userId, amount, assetId, type, 'deposit');
+  const confirmCryptoInvestment = useCallback(async (userId: string, amount: number, assetId: string, type: 'project' | 'pool') => {
+    await executeInvestment(userId, amount, assetId, type, 'deposit');
   }, [executeInvestment]);
 
   const updateInvestment = useCallback(async (investment: Investment) => {
@@ -937,8 +930,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('investments').update({ amount: investment.amount, date: investment.date, status: investment.status }).eq('id', investment.id);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const updateNewsPost = useCallback(async (post: NewsPost) => {
     if (!supabase) {
@@ -946,8 +939,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
     await supabase.from('news').update({ title: post.title, content: post.content }).eq('id', post.id);
-    // Realtime subscription will pick up changes
-  }, []);
+    await refreshData();
+  }, [refreshData]);
 
   const updateBonusRates = useCallback((newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => {
     setInstantBonusRates(newInstantRates);
