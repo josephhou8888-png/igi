@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -7,13 +8,25 @@ import EditInvestmentModal from './EditInvestmentModal';
 import { PlusCircleIcon } from '../../constants';
 
 const InvestmentManagement: React.FC = () => {
-    const { investments, users, deleteInvestment } = useAppContext();
+    const { investments, users, deleteInvestment, projects, investmentPools } = useAppContext();
     const { t } = useLocalization();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
 
     const getUserName = (userId: string) => {
         return users.find(u => u.id === userId)?.name || t('admin.investments.unknownUser');
+    };
+
+    const getAssetName = (inv: Investment) => {
+        if (inv.projectId) {
+            const project = projects.find(p => p.id === inv.projectId);
+            if (project) return project.tokenName;
+        }
+        if (inv.poolId) {
+            const pool = investmentPools.find(p => p.id === inv.poolId);
+            if (pool) return pool.name;
+        }
+        return inv.projectName || inv.poolName || 'N/A';
     };
 
     const handleExport = () => {
@@ -25,7 +38,7 @@ const InvestmentManagement: React.FC = () => {
                 inv.userId,
                 `"${getUserName(inv.userId)}"`,
                 inv.amount,
-                `"${inv.projectName || inv.poolName}"`,
+                `"${getAssetName(inv)}"`,
                 inv.date,
                 inv.status
             ].join(",")).join("\n");
@@ -79,7 +92,7 @@ const InvestmentManagement: React.FC = () => {
                                     <td className="px-6 py-4 font-mono text-xs">{inv.id}</td>
                                     <td className="px-6 py-4 font-medium text-white">{getUserName(inv.userId)}</td>
                                     <td className="px-6 py-4">${inv.amount.toLocaleString()}</td>
-                                    <td className="px-6 py-4">{inv.projectName || inv.poolName}</td>
+                                    <td className="px-6 py-4">{getAssetName(inv)}</td>
                                     <td className="px-6 py-4">{inv.date}</td>
                                     <td className="px-6 py-4">
                                         <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-900 text-green-300">

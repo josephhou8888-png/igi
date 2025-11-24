@@ -55,16 +55,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         .filter(inv => inv.userId === currentUser.id)
         .map(inv => {
             let apy = 0;
+            let name = inv.projectName || inv.poolName || 'N/A';
+
             if (inv.projectId) {
                 const project = projects.find(p => p.id === inv.projectId);
-                apy = project?.expectedYield || 0;
+                if (project) {
+                    apy = project.expectedYield;
+                    name = project.tokenName;
+                }
             } else if (inv.poolId) {
                 const pool = investmentPools.find(p => p.id === inv.poolId);
-                apy = pool?.apy || 0;
+                if (pool) {
+                    apy = pool.apy;
+                    name = pool.name;
+                }
             }
             return {
                 ...inv,
-                name: inv.projectName || inv.poolName || 'N/A',
+                name: name,
                 apy: apy,
             };
         })
