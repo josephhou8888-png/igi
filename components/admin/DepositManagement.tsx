@@ -1,13 +1,16 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
 import { Transaction } from '../../types';
 import RejectDepositModal from './RejectDepositModal';
+import ApproveDepositModal from './ApproveDepositModal';
 
 const DepositManagement: React.FC = () => {
-    const { transactions, users, approveDeposit } = useAppContext();
+    const { transactions, users } = useAppContext();
     const { t } = useLocalization();
     const [rejectingTransaction, setRejectingTransaction] = useState<Transaction | null>(null);
+    const [approvingTransaction, setApprovingTransaction] = useState<Transaction | null>(null);
 
     const pendingDeposits = useMemo(() => {
         return transactions
@@ -41,7 +44,7 @@ const DepositManagement: React.FC = () => {
                                         <td className="px-6 py-4 font-semibold text-green-400">${tx.amount.toLocaleString()}</td>
                                         <td className="px-6 py-4 font-mono text-gray-500 truncate max-w-xs">{tx.txHash}</td>
                                         <td className="px-6 py-4 text-right space-x-2">
-                                            <button onClick={() => approveDeposit(tx.id)} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md transition-colors">
+                                            <button onClick={() => setApprovingTransaction(tx)} className="text-xs font-semibold text-white bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md transition-colors">
                                                 {t('admin.deposits.approve')}
                                             </button>
                                             <button onClick={() => setRejectingTransaction(tx)} className="text-xs font-semibold text-white bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md transition-colors">
@@ -61,6 +64,12 @@ const DepositManagement: React.FC = () => {
                 <RejectDepositModal 
                     transaction={rejectingTransaction} 
                     onClose={() => setRejectingTransaction(null)} 
+                />
+            )}
+            {approvingTransaction && (
+                <ApproveDepositModal
+                    transaction={approvingTransaction}
+                    onClose={() => setApprovingTransaction(null)}
                 />
             )}
         </>

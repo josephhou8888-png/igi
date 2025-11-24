@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export interface User {
@@ -168,6 +169,7 @@ export enum View {
   RESOURCES = 'resources',
   USER_MANUAL = 'user_manual',
   PROJECTS = 'projects',
+  FUNDS = 'funds',
 }
 
 declare global {

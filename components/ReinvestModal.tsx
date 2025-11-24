@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { Project, InvestmentPool } from '../types';
@@ -7,13 +8,15 @@ interface ReinvestModalProps {
   onClose: () => void;
   depositBalance: number;
   profitBalance: number;
+  initialAssetId?: string;
+  forcedSource?: 'deposit' | 'profit_reinvestment';
 }
 
 const XIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 );
 
-const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, profitBalance }) => {
+const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, profitBalance, initialAssetId, forcedSource }) => {
   const { addInvestmentFromBalance, projects, investmentPools } = useAppContext();
   const { t } = useLocalization();
 
@@ -21,14 +24,35 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
   const [step, setStep] = useState<Step>('source');
 
   const [investmentSource, setInvestmentSource] = useState<'deposit' | 'profit'>(
-    profitBalance > 0 && depositBalance <= 0 ? 'profit' : 'deposit'
+    forcedSource === 'profit_reinvestment' ? 'profit' : (forcedSource === 'deposit' ? 'deposit' : (depositBalance > 0 ? 'deposit' : 'profit'))
   );
-  const [selectedAssetId, setSelectedAssetId] = useState<string>('');
+  
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(initialAssetId || '');
   const [amount, setAmount] = useState(0);
   const [error, setError] = useState('');
 
+  // Skip steps if props are provided
+  useEffect(() => {
+      if (initialAssetId && forcedSource) {
+          setStep('amount');
+          const asset = [...projects, ...investmentPools].find(a => a.id === initialAssetId);
+          if (asset) {
+              if (forcedSource === 'profit_reinvestment') {
+                  setAmount(Math.floor(profitBalance * 100) / 100);
+              } else {
+                  setAmount(asset.minInvestment);
+              }
+          }
+      }
+  }, [initialAssetId, forcedSource, projects, investmentPools, profitBalance]);
+
   const availableAssets = useMemo(() => {
-    return investmentSource === 'deposit' ? investmentPools : projects;
+    // Deposit source: Can invest in Projects (to give deposits a use)
+    if (investmentSource === 'deposit') {
+        return projects; 
+    }
+    // Profit source: Can invest in Projects AND Legacy Funds
+    return [...projects, ...investmentPools];
   }, [investmentSource, projects, investmentPools]);
 
   const selectedAsset = useMemo(() => {
@@ -65,7 +89,7 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
     
     const minInvestment = selectedAsset.minInvestment;
     const assetName = 'tokenName' in selectedAsset ? selectedAsset.tokenName : selectedAsset.name;
-    const investmentType = investmentSource === 'deposit' ? 'pool' : 'project';
+    const investmentType = 'tokenName' in selectedAsset ? 'project' : 'pool';
     
     if (amount < minInvestment) {
       setError(t('reinvestModal.errorMinReinvestment', { projectName: assetName, minInvestment: minInvestment.toLocaleString() }));
@@ -123,7 +147,13 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
         <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
           {availableAssets.map(asset => (
             <button key={asset.id} onClick={() => handleAssetSelect(asset)} className="w-full text-left p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
-              <h4 className="font-bold text-white">{'tokenName' in asset ? asset.tokenName : asset.name}</h4>
+              <div className="flex justify-between items-center">
+                  <h4 className="font-bold text-white">{'tokenName' in asset ? asset.tokenName : asset.name}</h4>
+                  {'tokenName' in asset ? 
+                    <span className="text-[10px] bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full uppercase">{t('reinvestModal.rwaProject')}</span> :
+                    <span className="text-[10px] bg-purple-900 text-purple-300 px-2 py-0.5 rounded-full uppercase">{t('reinvestModal.legacyFund')}</span>
+                  }
+              </div>
               <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
                 <span>APY: <span className="text-green-400 font-semibold">{'expectedYield' in asset ? asset.expectedYield : asset.apy}%</span></span>
                 <span>{t('admin.projects.minInvestment')}: <span className="text-white font-semibold">${asset.minInvestment.toLocaleString()}</span></span>
@@ -152,6 +182,7 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
               <div className="p-3 bg-gray-700 rounded-lg mb-4">
                   <p className="text-xs text-gray-400">{t('reinvestModal.step3.investingIn')}</p>
                   <p className="font-bold text-white">{assetName}</p>
+                  <p className="text-xs text-green-400 mt-1">{t('admin.legacyFunds.apy')}: {'expectedYield' in selectedAsset ? selectedAsset.expectedYield : selectedAsset.apy}%</p>
               </div>
               <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-300 mb-2">
@@ -170,8 +201,8 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
                   {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
               </div>
               <div className="flex justify-between items-center mt-6">
-                  <button type="button" onClick={() => setStep('asset')} className="text-sm text-gray-400 hover:text-white">&larr; {t('common.back')}</button>
-                  <div className="flex space-x-4">
+                  {!initialAssetId && <button type="button" onClick={() => setStep('asset')} className="text-sm text-gray-400 hover:text-white">&larr; {t('common.back')}</button>}
+                  <div className="flex space-x-4 ml-auto">
                       <button type="button" onClick={onClose} className="px-4 py-2 rounded-md bg-gray-600 text-white hover:bg-gray-500">{t('common.cancel')}</button>
                       <button type="submit" className="px-4 py-2 rounded-md bg-brand-primary text-white hover:bg-brand-primary/90">{t('reinvestModal.reinvestNow')}</button>
                   </div>
@@ -197,11 +228,13 @@ const ReinvestModal: React.FC<ReinvestModalProps> = ({ onClose, depositBalance, 
         </button>
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-white">{t('wallet.investFromWallet')}</h2>
-            <div className="flex space-x-1.5">
-                <div className={`w-3 h-3 rounded-full ${step === 'source' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
-                <div className={`w-3 h-3 rounded-full ${step === 'asset' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
-                <div className={`w-3 h-3 rounded-full ${step === 'amount' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
-            </div>
+            {!initialAssetId && (
+                <div className="flex space-x-1.5">
+                    <div className={`w-3 h-3 rounded-full ${step === 'source' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${step === 'asset' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${step === 'amount' ? 'bg-brand-primary' : 'bg-gray-600'}`}></div>
+                </div>
+            )}
         </div>
         
         {renderStepContent()}

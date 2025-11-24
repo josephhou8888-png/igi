@@ -65,7 +65,7 @@ interface AppContextType {
   disconnectSolanaWallet: () => void;
   fetchAllBalances: () => Promise<void>;
   // Admin functions
-  approveDeposit: (transactionId: string) => void;
+  approveDeposit: (transactionId: string, bonusAmount?: number) => void;
   rejectDeposit: (transactionId: string, reason: string) => void;
   createUser: (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments?: InitialInvestmentData[]) => void;
   updateUserRole: (userId: string, role: 'user' | 'admin') => void;
@@ -318,10 +318,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [users, currentUser]);
 
   // Persist Settings to LocalStorage
-  useEffect(() => setStoredData('igi_ranks', ranks), [ranks]);
-  useEffect(() => setStoredData('igi_instantRates', instantBonusRates), [instantBonusRates]);
-  useEffect(() => setStoredData('igi_teamRates', teamBuilderBonusRates), [teamBuilderBonusRates]);
-  useEffect(() => setStoredData('igi_wallets', treasuryWallets), [treasuryWallets]);
+  useEffect(() => { setStoredData('igi_ranks', ranks) }, [ranks]);
+  useEffect(() => { setStoredData('igi_instantRates', instantBonusRates) }, [instantBonusRates]);
+  useEffect(() => { setStoredData('igi_teamRates', teamBuilderBonusRates) }, [teamBuilderBonusRates]);
+  useEffect(() => { setStoredData('igi_wallets', treasuryWallets) }, [treasuryWallets]);
 
 
   // --- AUTHENTICATION LOGIC ---
@@ -840,14 +840,40 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [solanaWalletAddress, fetchAllBalances]);
 
   // Admin functions
-  const approveDeposit = useCallback(async (transactionId: string) => {
+  const approveDeposit = useCallback(async (transactionId: string, bonusAmount: number = 0) => {
+    const transaction = transactions.find(t => t.id === transactionId);
+    if (!transaction) return;
+
     if (!supabase) {
         setTransactions(prev => prev.map(t => t.id === transactionId ? { ...t, status: 'completed' } : t));
+        if (bonusAmount > 0) {
+            setTransactions(prev => [...prev, {
+                id: `tx-bonus-${Date.now()}`,
+                userId: transaction.userId,
+                type: 'Manual Bonus',
+                amount: bonusAmount,
+                reason: 'Deposit Bonus',
+                date: currentDate.toISOString().split('T')[0],
+                txHash: 'BONUS-DEP'
+            }]);
+        }
         return;
     }
+    
     await supabase.from('transactions').update({ status: 'completed' }).eq('id', transactionId);
+    
+    if (bonusAmount > 0) {
+        await supabase.from('transactions').insert({
+            user_id: transaction.userId,
+            type: 'Manual Bonus',
+            amount: bonusAmount,
+            reason: 'Deposit Bonus',
+            date: currentDate.toISOString().split('T')[0],
+            tx_hash: `BONUS-${Date.now()}`
+        });
+    }
     // Realtime subscription will pick up changes
-  }, []);
+  }, [transactions, currentDate]);
 
   const rejectDeposit = useCallback(async (transactionId: string, reason: string) => {
     if (!supabase) {

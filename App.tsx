@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AppContextProvider } from './context/AppContext';
 import { useAppContext } from './hooks/useAppContext';
@@ -14,6 +15,7 @@ import UserManual from './components/UserManual';
 import Projects from './components/Projects';
 import ProjectDetail from './components/ProjectDetail';
 import Network from './components/Network';
+import LegacyFunds from './components/LegacyFunds';
 import { View } from './types';
 
 const AppContent: React.FC = () => {
@@ -40,6 +42,8 @@ const AppContent: React.FC = () => {
           return <ProjectDetail projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />;
         }
         return <Projects onSelectProject={setSelectedProjectId} />;
+      case View.FUNDS:
+        return <LegacyFunds />;
       case View.WALLET:
         return <Wallet />;
       case View.NETWORK:

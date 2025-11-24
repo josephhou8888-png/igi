@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { View } from '../types';
-import { HomeIcon, NetworkIcon, WalletIcon, AdminIcon, TrophyIcon, UserIcon, MegaphoneIcon, BookOpenIcon, BriefcaseIcon } from '../constants';
+import { HomeIcon, NetworkIcon, WalletIcon, AdminIcon, TrophyIcon, UserIcon, MegaphoneIcon, BookOpenIcon, BriefcaseIcon, DollarSignIcon } from '../constants';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 
@@ -68,6 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isAdminV
           <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('sidebar.userPanel')}</p>
           <NavItem icon={<HomeIcon className="w-6 h-6" />} label={t('sidebar.dashboard')} view={View.DASHBOARD} isActive={currentView === View.DASHBOARD} />
           <NavItem icon={<BriefcaseIcon className="w-6 h-6" />} label={t('sidebar.projects')} view={View.PROJECTS} isActive={currentView === View.PROJECTS} />
+          <NavItem icon={<DollarSignIcon className="w-6 h-6" />} label={t('sidebar.funds')} view={View.FUNDS} isActive={currentView === View.FUNDS} />
           <NavItem icon={<NetworkIcon className="w-6 h-6" />} label={t('sidebar.myNetwork')} view={View.NETWORK} isActive={currentView === View.NETWORK} />
           <NavItem icon={<WalletIcon className="w-6 h-6" />} label={t('sidebar.wallet')} view={View.WALLET} isActive={currentView === View.WALLET} />
           <NavItem icon={<UserIcon className="w-6 h-6" />} label={t('sidebar.profile')} view={View.PROFILE} isActive={currentView === View.PROFILE} />

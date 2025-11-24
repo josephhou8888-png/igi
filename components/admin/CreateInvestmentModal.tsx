@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -10,6 +11,7 @@ const CreateInvestmentModal: React.FC<CreateInvestmentModalProps> = ({ onClose }
   const { users, projects, investmentPools, addInvestmentForUser } = useAppContext();
   const { t } = useLocalization();
   const [investmentType, setInvestmentType] = useState<'project' | 'pool'>('project');
+  const [investmentSource, setInvestmentSource] = useState<'deposit' | 'profit_reinvestment'>('deposit');
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [selectedAssetId, setSelectedAssetId] = useState<string>(projects[0]?.id || '');
   const [amount, setAmount] = useState(projects[0]?.minInvestment || 3000);
@@ -59,7 +61,7 @@ const CreateInvestmentModal: React.FC<CreateInvestmentModalProps> = ({ onClose }
       return;
     }
     setError('');
-    addInvestmentForUser(selectedUserId, amount, selectedAssetId, investmentType);
+    addInvestmentForUser(selectedUserId, amount, selectedAssetId, investmentType, investmentSource);
     onClose();
   };
 
@@ -111,6 +113,19 @@ const CreateInvestmentModal: React.FC<CreateInvestmentModalProps> = ({ onClose }
               )) : investmentPools.map(pool => (
                 <option key={pool.id} value={pool.id}>{pool.name}</option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              {t('reinvestModal.investmentSource')}
+            </label>
+            <select
+              value={investmentSource}
+              onChange={(e) => setInvestmentSource(e.target.value as 'deposit' | 'profit_reinvestment')}
+              className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2"
+            >
+              <option value="deposit">{t('reinvestModal.fromDeposits')}</option>
+              <option value="profit_reinvestment">{t('reinvestModal.fromProfits')}</option>
             </select>
           </div>
           <div>
