@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
+import { locales } from '../locales';
+import { ChevronDownIcon } from '../constants';
 
 const Login: React.FC = () => {
   const { login, signup, users, isDemoMode } = useAppContext();
-  const { t } = useLocalization();
+  const { t, locale, setLocale } = useLocalization();
   
   const [isSignup, setIsSignup] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,6 +20,9 @@ const Login: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+
+  const currentLocaleData = locales[locale as keyof typeof locales];
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,10 +45,10 @@ const Login: React.FC = () => {
     try {
       if (isSignup) {
         if (formData.password !== formData.confirmPassword) {
-          throw new Error("Passwords do not match");
+          throw new Error(t('login.error.passwordMismatch'));
         }
         if (formData.password.length < 6) {
-            throw new Error("Password must be at least 6 characters");
+            throw new Error(t('login.error.passwordLength'));
         }
         
         // Handle referral logic if code is provided
@@ -70,21 +75,57 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleLanguageSelect = (lang: string) => {
+    setLocale(lang);
+    setIsLanguageOpen(false);
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
-      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 relative overflow-hidden">
+      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 relative overflow-visible">
         
-        {/* Mode Indicator Badge */}
-        <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDemoMode ? 'bg-yellow-900 text-yellow-300 border border-yellow-700' : 'bg-green-900 text-green-300 border border-green-700'}`}>
-            {isDemoMode ? 'Demo Mode' : 'Live Mode'}
+        {/* Top Right Controls Container */}
+        <div className="absolute top-4 right-4 flex items-center space-x-3 z-20">
+            {/* Mode Indicator Badge */}
+            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDemoMode ? 'bg-yellow-900 text-yellow-300 border border-yellow-700' : 'bg-green-900 text-green-300 border border-green-700'}`}>
+                {isDemoMode ? t('login.demoMode') : t('login.liveMode')}
+            </div>
+
+            {/* Language Selector */}
+            <div className="relative">
+                <button 
+                    onClick={() => setIsLanguageOpen(!isLanguageOpen)} 
+                    className="flex items-center bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded-md border border-gray-600 transition-colors"
+                >
+                    <span className="text-lg mr-1">{currentLocaleData.flag}</span>
+                    <ChevronDownIcon className={`h-4 w-4 text-gray-400 transition-transform ${isLanguageOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {isLanguageOpen && (
+                    <div className="absolute right-0 mt-2 w-40 bg-gray-700 rounded-md shadow-xl z-50 border border-gray-600 overflow-hidden">
+                        {Object.entries(locales).map(([langCode, langData]) => (
+                        <button
+                            key={langCode}
+                            onClick={() => handleLanguageSelect(langCode)}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center ${
+                            locale === langCode ? 'bg-brand-primary text-white' : 'text-gray-200 hover:bg-gray-600'
+                            }`}
+                        >
+                            <span className="mr-3 text-lg">{langData.flag}</span>
+                            <span>{langData.name}</span>
+                        </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center pt-4">
             <h1 className="text-3xl font-bold text-white mb-2">
               IGI <span className="text-brand-primary">{t('sidebar.title')}</span>
             </h1>
             <p className="text-gray-400 text-sm">
-                {isSignup ? "Join the future of asset management" : "Welcome back, partner"}
+                {isSignup ? t('login.subtitle.signup') : t('login.subtitle.signin')}
             </p>
         </div>
 
@@ -98,7 +139,7 @@ const Login: React.FC = () => {
           
           {isSignup && (
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.fullName')}</label>
                 <input
                     type="text"
                     name="name"
@@ -112,7 +153,7 @@ const Login: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Email Address</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.email')}</label>
             <input
                 type="email"
                 name="email"
@@ -128,7 +169,7 @@ const Login: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.password')}</label>
                 <input
                     type="password"
                     name="password"
@@ -142,7 +183,7 @@ const Login: React.FC = () => {
               
               {isSignup && (
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.confirmPassword')}</label>
                     <input
                         type="password"
                         name="confirmPassword"
@@ -159,7 +200,7 @@ const Login: React.FC = () => {
           {isSignup && (
              <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.country')}</label>
                     <input
                         type="text"
                         name="country"
@@ -170,7 +211,7 @@ const Login: React.FC = () => {
                     />
                  </div>
                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Referral Code</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.referralCode')}</label>
                     <input
                         type="text"
                         name="referralCode"
@@ -194,10 +235,10 @@ const Login: React.FC = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Processing...
+                    {t('login.processing')}
                 </span>
             ) : (
-                isSignup ? "Create Account" : t('login.signIn')
+                isSignup ? t('login.createAccount') : t('login.signIn')
             )}
           </button>
         </form>
@@ -216,13 +257,13 @@ const Login: React.FC = () => {
                 onClick={() => { setIsSignup(!isSignup); setError(''); }}
                 className="text-brand-secondary hover:text-white text-sm font-medium transition-colors"
             >
-                {isSignup ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                {isSignup ? t('login.haveAccount') : t('login.noAccount')}
             </button>
         </div>
 
         {isDemoMode ? (
             <div className="text-center text-xs text-gray-500 mt-4">
-                <p>Demo Mode: Use mock credentials or create a new account. Data is persisted locally.</p>
+                <p>{t('login.demoHint')}</p>
                 {!isSignup && (
                     <div className="mt-2 bg-gray-700/50 p-3 rounded border border-gray-600/50 inline-block text-left space-y-3 w-full">
                         <div className="flex justify-between items-center">
@@ -255,16 +296,16 @@ const Login: React.FC = () => {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
                     </span>
-                    <p className="text-green-400 font-bold text-sm">Live System Connected</p>
+                    <p className="text-green-400 font-bold text-sm">{t('login.liveSystem')}</p>
                 </div>
                 <div className="text-left space-y-2">
-                    <p className="font-semibold text-gray-300">Why can't I login as Admin?</p>
-                    <p>The demo credentials (admin@...) do not exist in your Supabase database.</p>
-                    <p className="font-semibold text-gray-300 mt-2">How to become Admin:</p>
+                    <p className="font-semibold text-gray-300">{t('login.whyAdmin')}</p>
+                    <p>{t('login.adminExplanation')}</p>
+                    <p className="font-semibold text-gray-300 mt-2">{t('login.howToAdmin')}</p>
                     <ol className="list-decimal list-inside space-y-1 ml-1">
-                        <li>Use "Sign Up" above to create a real account.</li>
-                        <li>Go to your Supabase Dashboard &gt; Table Editor &gt; 'profiles'.</li>
-                        <li>Find your user and change 'role' from 'user' to 'admin'.</li>
+                        <li>{t('login.step1')}</li>
+                        <li>{t('login.step2')}</li>
+                        <li>{t('login.step3')}</li>
                     </ol>
                 </div>
             </div>
