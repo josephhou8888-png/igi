@@ -24,7 +24,8 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   const { t } = useLocalization();
 
   // Calculate position and open menu
-  const toggleMenu = () => {
+  const toggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (isOpen) {
         setIsOpen(false);
         return;
@@ -33,7 +34,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
     if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        const menuHeight = 350; // Approx height of menu
+        const menuHeight = 360; // Approx height of menu
         
         // Determine if menu should open up or down based on space
         let top = rect.bottom + window.scrollY;
@@ -54,9 +55,10 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
         if (isOpen) setIsOpen(false);
     };
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is outside the button. 
+      // We don't check the menu ref here because the menu is in a Portal.
+      // Closing on any click outside the trigger button is safe UI behavior for context menus.
       if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
-        // We don't check the menu ref here because the menu is in a Portal
-        // Ideally we would check the portal content too, but closing on any click outside the button is safe UI behavior
         setIsOpen(false);
       }
     };
@@ -72,9 +74,10 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
     };
   }, [isOpen]);
 
-  const handleActionClick = (action: () => void) => {
-    action();
+  const handleActionClick = (e: React.MouseEvent, action: () => void) => {
+    e.stopPropagation();
     setIsOpen(false);
+    action();
   };
 
   const handleChangeRole = () => {
@@ -92,7 +95,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   }> = ({ icon, label, onClick, className = 'text-gray-300' }) => (
     <li>
       <button
-        onClick={() => handleActionClick(onClick)}
+        onClick={(e) => handleActionClick(e, onClick)}
         className={`w-full text-left flex items-center px-4 py-2 text-sm hover:bg-gray-600 ${className}`}
       >
         {icon}
@@ -113,8 +116,9 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       
       {isOpen && createPortal(
         <div 
-            className="fixed z-50 w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
+            className="fixed z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
             style={{ top: menuPosition.top, left: menuPosition.left }}
+            onClick={(e) => e.stopPropagation()}
         >
           <ul className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
             <MenuItem

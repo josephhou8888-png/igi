@@ -39,7 +39,7 @@ interface AppContextType {
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
   addCryptoDeposit: (amount: number, txHash: string, reason?: string) => Promise<void>;
-  addWithdrawal: (amount: number, balance: number) => Promise<void>;
+  addWithdrawal: (amount: number, balance: number, walletAddress: string) => Promise<void>;
   updateKycStatus: (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => Promise<void>;
   toggleFreezeUser: (userId: string) => Promise<void>;
   markNotificationsAsRead: () => Promise<void>;
@@ -69,6 +69,8 @@ interface AppContextType {
   // Admin functions
   approveDeposit: (transactionId: string, bonusAmount?: number, autoInvestTarget?: { type: 'project' | 'pool', id: string }) => Promise<void>;
   rejectDeposit: (transactionId: string, reason: string) => Promise<void>;
+  approveWithdrawal: (transactionId: string, txHash: string) => Promise<void>;
+  rejectWithdrawal: (transactionId: string, reason: string) => Promise<void>;
   createUser: (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments?: InitialInvestmentData[]) => Promise<void>;
   updateUserRole: (userId: string, role: 'user' | 'admin') => Promise<void>;
   addInvestmentForUser: (userId: string, amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
@@ -538,7 +540,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [currentUser, currentDate, refreshData]);
 
 
-  const addWithdrawal = useCallback(async (amount: number, balance: number) => {
+  const addWithdrawal = useCallback(async (amount: number, balance: number, walletAddress: string) => {
     if (!currentUser) return;
     if (amount > balance) {
         alert("Withdrawal amount cannot exceed balance.");
@@ -547,14 +549,26 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     if (!supabase) {
         setTransactions(prev => [...prev, {
-            id: `tx-wd-${Date.now()}`, userId: currentUser.id, type: 'Withdrawal', amount, txHash: 'DEMO-WD', date: currentDate.toISOString().split('T')[0]
+            id: `tx-wd-${Date.now()}`, 
+            userId: currentUser.id, 
+            type: 'Withdrawal', 
+            amount, 
+            txHash: 'PENDING', 
+            date: currentDate.toISOString().split('T')[0],
+            status: 'pending',
+            reason: `Withdraw to: ${walletAddress}`
         }]);
         return;
     }
 
     await supabase.from('transactions').insert({
-      user_id: currentUser.id, type: 'Withdrawal', amount,
-      date: currentDate.toISOString().split('T')[0], tx_hash: `0x...wdw${Date.now().toString().slice(-4)}`,
+      user_id: currentUser.id, 
+      type: 'Withdrawal', 
+      amount,
+      date: currentDate.toISOString().split('T')[0], 
+      tx_hash: 'PENDING',
+      status: 'pending',
+      reason: `Withdraw to: ${walletAddress}`
     });
     await refreshData();
   }, [currentUser, currentDate, refreshData]);
@@ -766,7 +780,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         .reduce((sum, t) => sum + t.amount, 0);
 
       const totalProfits = userTransactions.filter(t => t.type === 'Profit Share' || t.type === 'Bonus').reduce((sum, t) => sum + t.amount, 0);
-      const totalWithdrawals = userTransactions.filter(t => t.type === 'Withdrawal' || t.type === 'Manual Deduction').reduce((sum, t) => sum + t.amount, 0);
+      const totalWithdrawals = userTransactions.filter(t => (t.type === 'Withdrawal' && t.status !== 'rejected') || t.type === 'Manual Deduction').reduce((sum, t) => sum + t.amount, 0);
 
       const investmentsFromDeposit = userInvestments.filter(i => i.source === 'deposit').reduce((sum, i) => sum + i.amount, 0);
       const reinvestmentsFromProfit = userInvestments.filter(i => i.source === 'profit_reinvestment').reduce((sum, i) => sum + i.amount, 0);
@@ -893,6 +907,24 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
     await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', transactionId);
     await refreshData();
+  }, [refreshData]);
+
+  const approveWithdrawal = useCallback(async (transactionId: string, txHash: string) => {
+      if (!supabase) {
+          setTransactions(prev => prev.map(t => t.id === transactionId ? { ...t, status: 'completed', txHash } : t));
+          return;
+      }
+      await supabase.from('transactions').update({ status: 'completed', tx_hash: txHash }).eq('id', transactionId);
+      await refreshData();
+  }, [refreshData]);
+
+  const rejectWithdrawal = useCallback(async (transactionId: string, reason: string) => {
+      if (!supabase) {
+          setTransactions(prev => prev.map(t => t.id === transactionId ? { ...t, status: 'rejected', rejectionReason: reason } : t));
+          return;
+      }
+      await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', transactionId);
+      await refreshData();
   }, [refreshData]);
 
   const createUser = useCallback(async (user: Omit<User, 'id' | 'totalInvestment' | 'totalDownline' | 'monthlyIncome' | 'achievements'>, initialInvestments: InitialInvestmentData[] = []) => {
@@ -1026,7 +1058,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       addProject, updateProject, deleteProject, addInvestmentPool, updateInvestmentPool, deleteInvestmentPool,
       adjustUserRank, getUserBalances,
       solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
-      approveDeposit, rejectDeposit,
+      approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks,
       seedDatabase,

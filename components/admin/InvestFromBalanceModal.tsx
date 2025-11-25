@@ -61,7 +61,7 @@ const InvestFromBalanceModal: React.FC<InvestFromBalanceModalProps> = ({ user, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <h2 className="text-xl font-bold text-white mb-2">{t('admin.investFromBalance.title', { name: user.name })}</h2>
         <p className="text-sm text-gray-400 mb-6">{t('admin.investFromBalance.subtitle')}</p>

@@ -85,7 +85,7 @@ const Wallet: React.FC = () => {
   };
 
   const getStatusBadge = (tx: Transaction) => {
-    if (tx.type !== 'Deposit' || !tx.status) return null;
+    if ((tx.type !== 'Deposit' && tx.type !== 'Withdrawal') || !tx.status) return null;
     
     const statusClasses = {
         pending: 'bg-yellow-900 text-yellow-300',

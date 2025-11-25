@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 
@@ -8,10 +9,17 @@ interface WithdrawModalProps {
 }
 
 const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }) => {
-  const { addWithdrawal } = useAppContext();
+  const { addWithdrawal, currentUser } = useAppContext();
   const { t } = useLocalization();
   const [amount, setAmount] = useState(100);
+  const [walletAddress, setWalletAddress] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+      if (currentUser?.wallet) {
+          setWalletAddress(currentUser.wallet);
+      }
+  }, [currentUser]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +31,13 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
       setError(t('withdrawModal.errorExceedsBalance'));
       return;
     }
+    if (!walletAddress) {
+        setError(t('withdrawModal.errorAddressRequired'));
+        return;
+    }
     setError('');
-    addWithdrawal(amount, currentBalance);
+    addWithdrawal(amount, currentBalance, walletAddress);
+    alert(t('withdrawModal.requestSuccess'));
     onClose();
   };
 
@@ -34,8 +47,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
         <h2 className="text-2xl font-bold text-white mb-4">{t('withdrawModal.title')}</h2>
         <p className="text-gray-400 mb-2">{t('withdrawModal.subtitle')}</p>
         <p className="text-sm text-brand-primary mb-6">{t('wallet.availableBalance')}: ${currentBalance.toLocaleString()}</p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
             <label htmlFor="amount" className="block text-sm font-medium text-gray-300 mb-2">
               {t('withdrawModal.amountLabel')}
             </label>
@@ -49,9 +62,22 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
               max={currentBalance}
               step="100"
             />
-            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           </div>
-          <div className="flex justify-end space-x-4">
+          <div>
+            <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-300 mb-2">
+              {t('withdrawModal.addressLabel')}
+            </label>
+            <input
+              type="text"
+              id="walletAddress"
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value)}
+              className="w-full bg-gray-700 text-white rounded-md border-gray-600 px-4 py-2 focus:ring-brand-primary focus:border-brand-primary font-mono text-sm"
+              placeholder="0x..."
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+          <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
               onClick={onClose}

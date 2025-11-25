@@ -15,8 +15,9 @@ import ProjectManagement from './ProjectManagement';
 import InvestmentPools from './InvestmentPools';
 import FinancialReports from './FinancialReports';
 import DepositManagement from './DepositManagement';
+import WithdrawalManagement from './WithdrawalManagement';
 
-type AdminTab = 'overview' | 'users' | 'deposits' | 'investments' | 'payouts' | 'projects' | 'legacyFunds' | 'transactions' | 'reports' | 'news' | 'settings';
+type AdminTab = 'overview' | 'users' | 'deposits' | 'withdrawals' | 'investments' | 'payouts' | 'projects' | 'legacyFunds' | 'transactions' | 'reports' | 'news' | 'settings';
 
 const AdminDashboard: React.FC = () => {
   const { users, investments, transactions, bonuses, currentDate, advanceDate } = useAppContext();
@@ -31,6 +32,7 @@ const AdminDashboard: React.FC = () => {
     newUsersToday,
     investmentsToday,
     pendingDeposits,
+    pendingWithdrawals,
   } = useMemo(() => {
     const todayStr = currentDate.toISOString().split('T')[0];
     return {
@@ -43,6 +45,7 @@ const AdminDashboard: React.FC = () => {
         .filter(inv => inv.date === todayStr)
         .reduce((sum, inv) => sum + inv.amount, 0),
       pendingDeposits: transactions.filter(tx => tx.type === 'Deposit' && tx.status === 'pending').length,
+      pendingWithdrawals: transactions.filter(tx => tx.type === 'Withdrawal' && tx.status === 'pending').length,
     };
   }, [investments, users, currentDate, transactions]);
   
@@ -55,7 +58,7 @@ const AdminDashboard: React.FC = () => {
         }
         if (tx.type === 'Deposit' && tx.status === 'completed') {
             dailyData[tx.date].inflow += tx.amount;
-        } else if (tx.type === 'Withdrawal') {
+        } else if (tx.type === 'Withdrawal' && tx.status === 'completed') {
             dailyData[tx.date].outflow += tx.amount;
         }
     });
@@ -144,6 +147,7 @@ const AdminDashboard: React.FC = () => {
         );
       case 'users': return <UserManagement />;
       case 'deposits': return <DepositManagement />;
+      case 'withdrawals': return <WithdrawalManagement />;
       case 'investments': return <InvestmentManagement />;
       case 'payouts': return <PayoutMonitoring />;
       case 'projects': return <ProjectManagement />;
@@ -178,6 +182,12 @@ const AdminDashboard: React.FC = () => {
               <div className="flex items-center space-x-2">
                   <span>{t('admin.tabs.deposits')}</span>
                   {pendingDeposits > 0 && <span className="bg-yellow-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{pendingDeposits}</span>}
+              </div>
+            } />
+            <TabButton tabId="withdrawals" label={
+              <div className="flex items-center space-x-2">
+                  <span>{t('admin.tabs.withdrawals')}</span>
+                  {pendingWithdrawals > 0 && <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{pendingWithdrawals}</span>}
               </div>
             } />
             <TabButton tabId="investments" label={t('admin.tabs.investments')} />
