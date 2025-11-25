@@ -37,6 +37,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
         const menuHeight = 360; // Approx height of menu
         
         // Determine if menu should open up or down based on space
+        // Using absolute positioning relative to document body
         let top = rect.bottom + window.scrollY;
         if (rect.bottom + menuHeight > windowHeight) {
             top = rect.top + window.scrollY - menuHeight;
@@ -63,12 +64,19 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       }
     };
 
+    let scrollTimer: any;
+
     if (isOpen) {
-        window.addEventListener('scroll', handleScroll, true);
+        // Add a small delay to attaching the scroll listener to prevent immediate closure
+        // if the click triggers a focus scroll
+        scrollTimer = setTimeout(() => {
+            window.addEventListener('scroll', handleScroll, true);
+        }, 50);
         document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
+      clearTimeout(scrollTimer);
       window.removeEventListener('scroll', handleScroll, true);
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -116,7 +124,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       
       {isOpen && createPortal(
         <div 
-            className="fixed z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
+            className="absolute z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
             style={{ top: menuPosition.top, left: menuPosition.left }}
             onClick={(e) => e.stopPropagation()}
         >
