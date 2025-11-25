@@ -21,6 +21,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useLocalization();
 
   // Calculate position and open menu
@@ -56,10 +57,13 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
         if (isOpen) setIsOpen(false);
     };
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if click is outside the button. 
-      // We don't check the menu ref here because the menu is in a Portal.
-      // Closing on any click outside the trigger button is safe UI behavior for context menus.
-      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+      // Check if click is outside the button AND outside the menu
+      if (
+          buttonRef.current && 
+          !buttonRef.current.contains(event.target as Node) &&
+          menuRef.current &&
+          !menuRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -124,6 +128,7 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       
       {isOpen && createPortal(
         <div 
+            ref={menuRef}
             className="absolute z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
             style={{ top: menuPosition.top, left: menuPosition.left }}
             onClick={(e) => e.stopPropagation()}
