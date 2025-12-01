@@ -1236,14 +1236,15 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     if (!currentUser) return;
 
     if (!supabase) {
-        // Demo Mode
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-        alert(`Demo Mode: Invitation email simulated to ${email}`);
+        // Demo Mode - Provide the mailto link here too for a complete demo experience
+        const subject = t('dashboard.referral.emailSubject');
+        const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         return;
     }
 
     try {
-        const { error } = await supabase.functions.invoke('send-referral-invite', {
+        const { data, error } = await supabase.functions.invoke('send-referral-invite', {
             body: {
                 email,
                 referralCode: currentUser.referralCode,
@@ -1251,19 +1252,19 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 referralLink: `${window.location.origin}?ref=${currentUser.referralCode}`
             }
         });
+        
         if (error) throw error;
+        
         alert(t('dashboard.referral.inviteSentAction'));
     } catch (e: any) {
-        console.warn('Supabase Edge Function invite failed:', e);
+        console.error('Supabase Edge Function failed:', e);
         
-        // Notify user of server failure before falling back
-        alert(`Failed to send email via server: ${e.message || 'Unknown error'}. Switching to default mail client.`);
+        // Notify user of the server-side failure and fallback
+        alert(`Server email failed. Opening default mail client.`);
         
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
-        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
-        window.location.href = mailtoLink;
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
   }, [currentUser, t]);
 
