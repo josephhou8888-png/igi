@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useLocalization } from '../hooks/useLocalization';
 import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from '../types';
@@ -1254,14 +1253,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         if (error) throw error;
         alert(t('dashboard.referral.inviteSentAction'));
     } catch (e) {
-        console.error('Error sending invite:', e);
+        console.warn('Edge Function failed, falling back to mailto:', e);
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        if(window.confirm("Failed to send email via server (Edge Function not deployed?). Open default mail client instead?")) {
-            window.location.href = mailtoLink;
-        }
+        // Automatically open mail client with a clearer message
+        alert("The server-side email service is currently unavailable. We will open your default email client to send the invite.");
+        window.location.href = mailtoLink;
     }
   }, [currentUser, t]);
 
