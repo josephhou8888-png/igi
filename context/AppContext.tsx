@@ -102,12 +102,23 @@ interface AppContextProviderProps {
 
 // --- LOCAL STORAGE HELPERS ---
 const getStoredData = <T,>(key: string, defaultData: T): T => {
-  const stored = localStorage.getItem(key);
-  return stored ? JSON.parse(stored) : defaultData;
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultData;
+  } catch (error) {
+    console.warn(`Error loading ${key} from localStorage, using defaults.`, error);
+    return defaultData;
+  }
 };
 
 const setStoredData = <T,>(key: string, data: T) => {
-  localStorage.setItem(key, JSON.stringify(data));
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    // Uncomment for debugging persistence
+    // console.log(`Saved ${key} to localStorage`);
+  } catch (error) {
+    console.error(`Error saving ${key} to localStorage:`, error);
+  }
 };
 
 
@@ -347,8 +358,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             const frozenChanged = updatedProfile.isFrozen !== currentUser.isFrozen;
             const rankChanged = updatedProfile.rank !== currentUser.rank;
             const balanceChanged = updatedProfile.totalInvestment !== currentUser.totalInvestment;
+            const kycChanged = updatedProfile.kycStatus !== currentUser.kycStatus;
             
-            if (roleChanged || frozenChanged || rankChanged || balanceChanged) {
+            if (roleChanged || frozenChanged || rankChanged || balanceChanged || kycChanged) {
                 // Keep the current user object identity but update fields to trigger re-renders only when needed
                 // Using functional update to access latest state
                 setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
@@ -714,7 +726,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     await supabase.from('profiles').update({
         name: updatedUser.name,
         avatar: updatedUser.avatar,
-        wallet: updatedUser.wallet
+        wallet: updatedUser.wallet,
+        rank: updatedUser.rank,
+        upline_id: updatedUser.uplineId,
+        total_investment: updatedUser.totalInvestment
     }).eq('id', updatedUser.id);
     await refreshData();
   }, [currentUser, refreshData]);
@@ -814,6 +829,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
     await supabase.from('projects').update({
         token_name: project.tokenName,
+        // ... updates for other fields
     }).eq('id', project.id);
     await refreshData();
   }, [refreshData]);
