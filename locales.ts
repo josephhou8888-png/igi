@@ -123,6 +123,12 @@ export const locales = {
       "withdrawModal.errorAddressRequired": "Wallet address is required.",
       "withdrawModal.withdrawFunds": "Request Withdrawal",
       "withdrawModal.requestSuccess": "Withdrawal requested successfully!",
+      "withdrawModal.confirmTitle": "Confirm Withdrawal",
+      "withdrawModal.confirmMessage": "Please review the details below. This action is irreversible.",
+      "withdrawModal.confirmAddress": "Receiving Address",
+      "withdrawModal.confirmAmount": "Amount",
+      "withdrawModal.confirmWarning": "Ensure the address is correct and on the TRON (TRC20) network. Funds sent to the wrong address cannot be recovered.",
+      "withdrawModal.confirmButton": "Confirm & Proceed",
 
       "reinvestModal.step1.title": "Select Source",
       "reinvestModal.step1.subtitle": "Choose where you want to invest from.",
