@@ -1235,11 +1235,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const sendReferralInvite = useCallback(async (email: string) => {
     if (!currentUser) return;
 
-    // 1. Check constraints for Supabase usage
-    // Mock users have IDs like 'user-1' which are not valid UUIDs. Real Supabase users have UUIDs.
+    // Check constraints: Mock users (non-UUID) in Demo Mode cannot use server functions
     const isMockUser = !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
     
     if (!supabase || isMockUser) {
+        console.warn("Skipping Supabase Edge Function call: App is in Demo Mode or User ID is not a UUID.");
         // Fallback directly for demo/mock to avoid server errors on invalid IDs
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
@@ -1247,30 +1247,32 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
 
-    // 2. Attempt Server-Side Send
+    // Attempt Server-Side Send via Edge Function
     try {
-        const { error } = await supabase.functions.invoke('send-referral-invite', {
+        const { error, data } = await supabase.functions.invoke('send-referral-invite', {
             body: {
                 recipient_email: email,
                 code: currentUser.referralCode,
-                inviterName: currentUser.name,
-                referralLink: `${window.location.origin}?ref=${currentUser.referralCode}`,
-                referrer_id: currentUser.id // Explicitly send ID for DB insertion
+                referrer_id: currentUser.id,
+                inviter_name: currentUser.name,
+                referral_link: `${window.location.origin}?ref=${currentUser.referralCode}`
             }
         });
         
         if (error) {
-            throw error; // Throw to catch block
+            throw new Error(error.message || "Unknown Edge Function Error");
         }
         
-        // Success
-        alert(t('dashboard.referral.inviteSentAction'));
+        // If the function returns an error in the body (e.g. 400 Bad Request)
+        if (data && data.error) {
+             throw new Error(data.error);
+        }
 
     } catch (e: any) {
         console.error('Email Edge Function Failed:', e);
         
-        // 3. Fallback on Failure
-        alert("Server email failed. Opening default mail client.");
+        // Explicit fallback on server failure so the user isn't stuck
+        alert(`Server email failed: ${e.message}. Opening default mail client.`);
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

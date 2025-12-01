@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon } from '../constants';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon, CheckCircleIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -15,6 +15,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const { t } = useLocalization();
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
   
   if (!currentUser) return <div>{t('dashboard.loading')}</div>;
 
@@ -137,9 +138,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     if (!inviteEmail) return;
     
     setIsInviting(true);
+    setInviteSuccess(false);
     try {
         await sendReferralInvite(inviteEmail);
         setInviteEmail('');
+        setInviteSuccess(true);
+        setTimeout(() => setInviteSuccess(false), 3000);
     } catch (error) {
         // Error handling if needed, though AppContext handles alerts
     } finally {
@@ -190,54 +194,61 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           <h3 className="text-lg font-semibold text-white">{t('dashboard.referral.title')}</h3>
           <div className="bg-gray-700 p-4 rounded-lg">
             <p className="text-sm text-gray-400">{t('dashboard.referral.subtitle')}</p>
-            <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center justify-between mt-1 mb-6">
               <p className="text-lg font-mono text-white break-all">{currentUser.referralCode}</p>
               <div className="flex items-center space-x-3">
-                <button onClick={copyToClipboard} className="text-gray-400 hover:text-white" title={t('dashboard.referral.copy')}>
+                <button onClick={copyToClipboard} className="text-gray-400 hover:text-white transition-colors" title={t('dashboard.referral.copy')}>
                   <CopyIcon className="w-5 h-5" />
                 </button>
-                <button onClick={handleShare} className="text-gray-400 hover:text-white" title={t('dashboard.referral.share')}>
+                <button onClick={handleShare} className="text-gray-400 hover:text-white transition-colors" title={t('dashboard.referral.share')}>
                   <ShareIcon className="w-5 h-5" />
                 </button>
               </div>
             </div>
             
-            {/* Invite via Email Section */}
-            <div className="mt-6 pt-6 border-t border-gray-700">
-                <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
-                    <MailIcon className="w-4 h-4 mr-2 text-brand-primary" />
+            {/* Redesigned Invite via Email Section */}
+            <div className="border-t border-gray-600 pt-4">
+                <label className="text-xs uppercase font-bold text-gray-400 mb-2 block tracking-wider">
                     {t('dashboard.referral.inviteTitle')}
-                </h4>
-                <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
-                    <input 
-                        type="email" 
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder={t('dashboard.referral.emailPlaceholder')}
-                        className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all placeholder-gray-500"
-                        required
-                    />
+                </label>
+                <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-grow">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <MailIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input 
+                            type="email" 
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            placeholder={t('dashboard.referral.emailPlaceholder')}
+                            className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-md pl-10 pr-4 py-2 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary transition-colors placeholder-gray-500"
+                            required
+                        />
+                    </div>
                     <button 
                         type="submit"
-                        disabled={isInviting}
-                        className="bg-brand-primary hover:bg-brand-primary/90 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-lg shadow-brand-primary/20"
+                        disabled={isInviting || inviteSuccess}
+                        className={`px-4 py-2 rounded-md font-medium text-sm transition-all flex items-center justify-center whitespace-nowrap shadow-md ${
+                            inviteSuccess 
+                            ? 'bg-green-600 text-white cursor-default' 
+                            : 'bg-brand-primary hover:bg-brand-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+                        }`}
                     >
                         {isInviting ? (
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : inviteSuccess ? (
                             <>
-                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Sending...
+                                <CheckCircleIcon className="w-5 h-5 mr-1" />
+                                Sent!
                             </>
                         ) : (
                             t('dashboard.referral.send')
                         )}
                     </button>
                 </form>
-                <p className="text-xs text-gray-500 mt-2">
-                    Invites are sent securely via our platform.
-                </p>
             </div>
           </div>
         </div>
