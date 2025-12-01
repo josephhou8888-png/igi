@@ -203,33 +203,41 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             </div>
             
             {/* Invite via Email Section */}
-            <div className="mt-4 pt-4 border-t border-gray-600">
-                <p className="text-sm text-gray-300 mb-2">{t('dashboard.referral.inviteTitle')}</p>
-                <form onSubmit={handleInvite} className="flex gap-2">
+            <div className="mt-6 pt-6 border-t border-gray-700">
+                <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                    <MailIcon className="w-4 h-4 mr-2 text-brand-primary" />
+                    {t('dashboard.referral.inviteTitle')}
+                </h4>
+                <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
                     <input 
                         type="email" 
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
                         placeholder={t('dashboard.referral.emailPlaceholder')}
-                        className="flex-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-md px-3 py-2 focus:ring-brand-primary focus:border-brand-primary outline-none"
+                        className="flex-1 bg-gray-900 border border-gray-600 text-white text-sm rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-brand-primary focus:border-transparent outline-none transition-all placeholder-gray-500"
                         required
                     />
                     <button 
                         type="submit"
                         disabled={isInviting}
-                        className="bg-brand-primary hover:bg-brand-primary/90 text-white p-2 rounded-md transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed w-10"
-                        title={t('dashboard.referral.send')}
+                        className="bg-brand-primary hover:bg-brand-primary/90 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-lg shadow-brand-primary/20"
                     >
                         {isInviting ? (
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Sending...
+                            </>
                         ) : (
-                            <MailIcon className="w-5 h-5" />
+                            t('dashboard.referral.send')
                         )}
                     </button>
                 </form>
+                <p className="text-xs text-gray-500 mt-2">
+                    Invites are sent securely via our platform.
+                </p>
             </div>
           </div>
         </div>

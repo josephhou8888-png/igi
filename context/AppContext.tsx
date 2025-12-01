@@ -1235,33 +1235,42 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const sendReferralInvite = useCallback(async (email: string) => {
     if (!currentUser) return;
 
-    if (!supabase) {
-        // Demo Mode - Provide the mailto link here too for a complete demo experience
+    // 1. Check constraints for Supabase usage
+    // Mock users have IDs like 'user-1' which are not valid UUIDs. Real Supabase users have UUIDs.
+    const isMockUser = !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
+    
+    if (!supabase || isMockUser) {
+        // Fallback directly for demo/mock to avoid server errors on invalid IDs
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         return;
     }
 
+    // 2. Attempt Server-Side Send
     try {
-        const { data, error } = await supabase.functions.invoke('send-referral-invite', {
+        const { error } = await supabase.functions.invoke('send-referral-invite', {
             body: {
-                email,
-                referralCode: currentUser.referralCode,
+                recipient_email: email,
+                code: currentUser.referralCode,
                 inviterName: currentUser.name,
-                referralLink: `${window.location.origin}?ref=${currentUser.referralCode}`
+                referralLink: `${window.location.origin}?ref=${currentUser.referralCode}`,
+                referrer_id: currentUser.id // Explicitly send ID for DB insertion
             }
         });
         
-        if (error) throw error;
+        if (error) {
+            throw error; // Throw to catch block
+        }
         
+        // Success
         alert(t('dashboard.referral.inviteSentAction'));
+
     } catch (e: any) {
-        console.error('Supabase Edge Function failed:', e);
+        console.error('Email Edge Function Failed:', e);
         
-        // Notify user of the server-side failure and fallback
-        alert(`Server email failed. Opening default mail client.`);
-        
+        // 3. Fallback on Failure
+        alert("Server email failed. Opening default mail client.");
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
