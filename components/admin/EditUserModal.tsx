@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
 import { User } from '../../types';
@@ -24,6 +25,29 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose }) => {
     onClose();
   };
 
+  // Helper to find all descendant IDs to prevent cycles in the UI
+  const getDescendantIds = (userId: string, allUsers: User[], visited = new Set<string>()): Set<string> => {
+      if (visited.has(userId)) return new Set(); // Safety break
+      visited.add(userId);
+      
+      const children = allUsers.filter(u => u.uplineId === userId);
+      const descendants = new Set<string>();
+      
+      children.forEach(child => {
+          descendants.add(child.id);
+          const grandChildren = getDescendantIds(child.id, allUsers, new Set(visited));
+          grandChildren.forEach(id => descendants.add(id));
+      });
+      
+      return descendants;
+  };
+
+  const invalidUplineIds = useMemo(() => {
+      const ids = getDescendantIds(user.id, users);
+      ids.add(user.id); // Cannot be own upline
+      return ids;
+  }, [user.id, users]);
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-lg">
@@ -41,8 +65,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose }) => {
             <label className="block text-sm font-medium text-gray-300">{t('admin.editUser.upline')}</label>
             <select name="uplineId" value={formData.uplineId || ''} onChange={handleChange} className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2">
               <option value="">{t('admin.editUser.uplineNone')}</option>
-              {users.filter(u => u.id !== user.id).map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
+              {users.map(u => (
+                <option 
+                    key={u.id} 
+                    value={u.id}
+                    disabled={invalidUplineIds.has(u.id)}
+                    className={invalidUplineIds.has(u.id) ? 'text-gray-500 bg-gray-800 italic' : ''}
+                >
+                    {u.name} {invalidUplineIds.has(u.id) ? '(Invalid - Loop)' : ''}
+                </option>
               ))}
             </select>
           </div>
