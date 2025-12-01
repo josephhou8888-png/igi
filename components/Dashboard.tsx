@@ -11,9 +11,10 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances } = useAppContext();
+  const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite } = useAppContext();
   const { t } = useLocalization();
   const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
   
   if (!currentUser) return <div>{t('dashboard.loading')}</div>;
 
@@ -131,21 +132,19 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     }
   };
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
     
-    const referralLink = `${window.location.origin}?ref=${currentUser.referralCode}`;
-    const subject = t('dashboard.referral.emailSubject');
-    const body = t('dashboard.referral.emailBody', { 
-        referralLink: referralLink
-    });
-    
-    const mailtoLink = `mailto:${inviteEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoLink;
-    
-    setInviteEmail('');
-    alert(t('dashboard.referral.inviteSentAction'));
+    setIsInviting(true);
+    try {
+        await sendReferralInvite(inviteEmail);
+        setInviteEmail('');
+    } catch (error) {
+        // Error handling if needed, though AppContext handles alerts
+    } finally {
+        setIsInviting(false);
+    }
   }
 
   const Card: React.FC<{ title: string; value: string | number; subtext?: string, icon: React.ReactNode }> = ({ title, value, subtext, icon }) => (
@@ -217,10 +216,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                     />
                     <button 
                         type="submit"
-                        className="bg-brand-primary hover:bg-brand-primary/90 text-white p-2 rounded-md transition-colors flex items-center justify-center"
+                        disabled={isInviting}
+                        className="bg-brand-primary hover:bg-brand-primary/90 text-white p-2 rounded-md transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed w-10"
                         title={t('dashboard.referral.send')}
                     >
-                        <MailIcon className="w-5 h-5" />
+                        {isInviting ? (
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : (
+                            <MailIcon className="w-5 h-5" />
+                        )}
                     </button>
                 </form>
             </div>
@@ -335,4 +342,3 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 };
 
 export default Dashboard;
-    

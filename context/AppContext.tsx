@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useLocalization } from '../hooks/useLocalization';
 import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from '../types';
@@ -84,6 +85,7 @@ interface AppContextType {
   updateWithdrawalLimit: (limit: number) => void;
   updateMinWithdrawalLimit: (limit: number) => void;
   seedDatabase: () => Promise<void>;
+  sendReferralInvite: (email: string) => Promise<void>;
   // Auth functions
   login: (email: string, password: string) => Promise<void>;
   signup: (userData: Partial<User>) => Promise<void>;
@@ -113,15 +115,39 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const { t } = useLocalization();
   const [loading, setLoading] = useState(true);
 
-  // Data State - Fallback to Mocks if Supabase is not configured
-  const [users, setUsers] = useState<User[]>(() => supabase ? [] : MOCK_USERS);
-  const [investments, setInvestments] = useState<Investment[]>(() => supabase ? [] : MOCK_INVESTMENTS);
-  const [transactions, setTransactions] = useState<Transaction[]>(() => supabase ? [] : MOCK_TRANSACTIONS);
-  const [bonuses, setBonuses] = useState<Bonus[]>(() => supabase ? [] : MOCK_BONUSES);
-  const [projects, setProjects] = useState<Project[]>(() => supabase ? [] : MOCK_PROJECTS);
-  const [investmentPools, setInvestmentPools] = useState<InvestmentPool[]>(() => supabase ? [] : MOCK_INVESTMENT_POOLS);
-  const [news, setNews] = useState<NewsPost[]>(() => supabase ? [] : MOCK_NEWS);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  // Data State - Persistence for Demo Mode, Fallback to Mocks
+  const [users, setUsers] = useState<User[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_users', MOCK_USERS);
+  });
+  const [investments, setInvestments] = useState<Investment[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_investments', MOCK_INVESTMENTS);
+  });
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_transactions', MOCK_TRANSACTIONS);
+  });
+  const [bonuses, setBonuses] = useState<Bonus[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_bonuses', MOCK_BONUSES);
+  });
+  const [projects, setProjects] = useState<Project[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_projects', MOCK_PROJECTS);
+  });
+  const [investmentPools, setInvestmentPools] = useState<InvestmentPool[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_pools', MOCK_INVESTMENT_POOLS);
+  });
+  const [news, setNews] = useState<NewsPost[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_news', MOCK_NEWS);
+  });
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+      if (supabase) return [];
+      return getStoredData('igi_demo_notifications', []);
+  });
 
   // Settings State
   const [ranks, setRanks] = useState<Rank[]>(() => getStoredData('igi_ranks', INITIAL_RANKS));
@@ -263,6 +289,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   // Check active session on mount
   useEffect(() => {
     if (!supabase) {
+        // Local Session persistence check
+        const storedSessionId = localStorage.getItem('igi_demo_session');
+        if (storedSessionId) {
+            const user = users.find(u => u.id === storedSessionId);
+            if (user) setCurrentUser(user);
+        }
         setLoading(false);
         return;
     }
@@ -303,7 +335,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     refreshData();
 
     return () => subscription.unsubscribe();
-  }, [refreshData]);
+  }, [refreshData]); // Depend on refreshData only, not users, to avoid loop during init
 
   // Sync currentUser with updated users data from global refresh
   useEffect(() => {
@@ -314,16 +346,18 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             const roleChanged = updatedProfile.role !== currentUser.role;
             const frozenChanged = updatedProfile.isFrozen !== currentUser.isFrozen;
             const rankChanged = updatedProfile.rank !== currentUser.rank;
+            const balanceChanged = updatedProfile.totalInvestment !== currentUser.totalInvestment;
             
-            if (roleChanged || frozenChanged || rankChanged) {
-                console.log(`Syncing user profile for ${currentUser.email}`);
+            if (roleChanged || frozenChanged || rankChanged || balanceChanged) {
+                // Keep the current user object identity but update fields to trigger re-renders only when needed
+                // Using functional update to access latest state
                 setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
             }
         }
     }
   }, [users, currentUser]);
 
-  // Persist Settings to LocalStorage
+  // Persist Settings & Demo Data to LocalStorage
   useEffect(() => { setStoredData('igi_ranks', ranks) }, [ranks]);
   useEffect(() => { setStoredData('igi_instantRates', instantBonusRates) }, [instantBonusRates]);
   useEffect(() => { setStoredData('igi_teamRates', teamBuilderBonusRates) }, [teamBuilderBonusRates]);
@@ -331,6 +365,16 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   useEffect(() => { setStoredData('igi_socials', socialLinks) }, [socialLinks]);
   useEffect(() => { setStoredData('igi_withdrawalLimit', withdrawalLimit) }, [withdrawalLimit]);
   useEffect(() => { setStoredData('igi_minWithdrawalLimit', minWithdrawalLimit) }, [minWithdrawalLimit]);
+
+  // Persist Demo Transactional Data
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_users', users) }, [users]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_investments', investments) }, [investments]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_transactions', transactions) }, [transactions]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_bonuses', bonuses) }, [bonuses]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_projects', projects) }, [projects]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_pools', investmentPools) }, [investmentPools]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_news', news) }, [news]);
+  useEffect(() => { if (!supabase) setStoredData('igi_demo_notifications', notifications) }, [notifications]);
 
 
   // --- AUTHENTICATION LOGIC ---
@@ -343,6 +387,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         if (user && (user.password === password || password === 'password')) {
              if(user.isFrozen) throw new Error("Account is frozen.");
              setCurrentUser(user);
+             localStorage.setItem('igi_demo_session', user.id); // Persist session
         } else {
             throw new Error("Invalid credentials (Local Demo Mode: try password 'password')");
         }
@@ -377,9 +422,44 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const signup = useCallback(async (userData: Partial<User>) => {
       if (!supabase) {
-          alert("Sign up not available in Demo Mode without Supabase connection.");
+          const newUser: User = {
+              id: `user-${Date.now()}`,
+              name: userData.name!,
+              email: userData.email!,
+              password: userData.password, // Store password for demo login
+              wallet: `0x${Math.random().toString(16).slice(2, 42)}`,
+              rank: 1,
+              uplineId: userData.uplineId || null,
+              referralCode: `${userData.name?.split(' ')[0].toUpperCase() || 'USER'}${Math.floor(1000 + Math.random() * 9000)}`,
+              totalInvestment: 0,
+              totalDownline: 0,
+              monthlyIncome: 0,
+              kycStatus: 'Not Submitted',
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=random`,
+              country: userData.country || 'Global',
+              isFrozen: false,
+              role: 'user',
+              achievements: [],
+              joinDate: new Date().toISOString().split('T')[0]
+          };
+          setUsers(prev => [...prev, newUser]);
+          
+          if (userData.uplineId) {
+              setNotifications(prev => [...prev, {
+                  id: `notif-${Date.now()}`,
+                  userId: userData.uplineId!,
+                  type: 'New Downline',
+                  message: `${newUser.name} has joined your team!`,
+                  date: new Date().toISOString().split('T')[0],
+                  read: false
+              }]);
+          }
+          
+          alert("Account created in Demo Mode! You can now log in.");
           return;
       }
+      
+      // Supabase Signup Logic
       const referralCode = `${userData.name?.split(' ')[0].toUpperCase() || 'USER'}${Math.floor(1000 + Math.random() * 9000)}`;
       const wallet = `0x${Math.random().toString(16).slice(2, 42)}`;
       
@@ -413,12 +493,16 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const logout = useCallback(async () => {
       if (supabase) await supabase.auth.signOut();
+      localStorage.removeItem('igi_demo_session');
       setCurrentUser(null);
   }, []);
 
 
   const addNotification = useCallback(async (notification: Omit<Notification, 'id'>) => {
-    if (!supabase) return;
+    if (!supabase) {
+        setNotifications(prev => [...prev, { id: `notif-${Date.now()}`, ...notification }]);
+        return;
+    }
     const { error } = await supabase.from('notifications').insert({
         user_id: notification.userId,
         type: notification.type,
@@ -611,7 +695,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const markNotificationsAsRead = useCallback(async () => {
     if(!currentUser) return;
-    if (!supabase) return; 
+    if (!supabase) {
+        setNotifications(prev => prev.map(n => n.userId === currentUser.id ? { ...n, read: true } : n));
+        setBonuses(prev => prev.map(b => b.userId === currentUser.id ? { ...b, read: true } : b));
+        return; 
+    }
     await supabase.from('bonuses').update({ read: true }).eq('user_id', currentUser.id);
     await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id);
     await refreshData();
@@ -704,7 +792,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, []);
 
   const addProject = useCallback(async (project: Partial<Omit<Project, 'id'>>) => {
-    if (!supabase) return; 
+    if (!supabase) {
+        setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...project } as Project]);
+        return;
+    } 
     await supabase.from('projects').insert({
         token_name: project.tokenName,
         asset_type: project.assetType,
@@ -717,7 +808,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [refreshData]);
 
   const updateProject = useCallback(async (project: Project) => {
-    if (!supabase) return;
+    if (!supabase) {
+        setProjects(prev => prev.map(p => p.id === project.id ? project : p));
+        return;
+    }
     await supabase.from('projects').update({
         token_name: project.tokenName,
     }).eq('id', project.id);
@@ -725,13 +819,19 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [refreshData]);
 
   const deleteProject = useCallback(async (projectId: string) => {
-      if (!supabase) return;
+      if (!supabase) {
+          setProjects(prev => prev.filter(p => p.id !== projectId));
+          return;
+      }
       await supabase.from('projects').delete().eq('id', projectId);
       await refreshData();
   }, [refreshData]);
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
-    if (!supabase) return;
+    if (!supabase) {
+        setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]);
+        return;
+    }
     await supabase.from('investment_pools').insert({
         name: pool.name,
         description: pool.description,
@@ -742,7 +842,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [refreshData]);
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
-    if (!supabase) return;
+    if (!supabase) {
+        setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p));
+        return;
+    }
     await supabase.from('investment_pools').update({
         name: pool.name,
         description: pool.description,
@@ -753,7 +856,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [refreshData]);
 
   const deleteInvestmentPool = useCallback(async (poolId: string) => {
-      if (!supabase) return;
+      if (!supabase) {
+          setInvestmentPools(prev => prev.filter(p => p.id !== poolId));
+          return;
+      }
       await supabase.from('investment_pools').delete().eq('id', poolId);
       await refreshData();
   }, [refreshData]);
@@ -945,11 +1051,45 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             achievements: []
         };
         setUsers(prev => [...prev, newUser]);
+        
+        // Handle initial investments in demo mode
+        for (const inv of initialInvestments) {
+             // Mock execute investment without modifying wallet balance (admin creation)
+             // Or we could reuse executeInvestment but that requires deposit source
+             // For simplicity, let's just add the investment and update user total
+             const newInvId = `inv-${Date.now()}-${Math.random()}`;
+             setInvestments(prev => [...prev, {
+                 id: newInvId,
+                 userId: newUser.id,
+                 amount: inv.amount,
+                 date: currentDate.toISOString().split('T')[0],
+                 status: 'Active',
+                 projectId: inv.type === 'project' ? inv.assetId : undefined,
+                 poolId: inv.type === 'pool' ? inv.assetId : undefined,
+                 projectName: inv.type === 'project' ? projects.find(p => p.id === inv.assetId)?.tokenName : undefined,
+                 poolName: inv.type === 'pool' ? investmentPools.find(p => p.id === inv.assetId)?.name : undefined,
+                 totalProfitEarned: 0,
+                 source: 'deposit'
+             }]);
+             // Add transaction for record
+             setTransactions(prev => [...prev, {
+                 id: `tx-init-${Date.now()}-${Math.random()}`,
+                 userId: newUser.id,
+                 type: 'Investment',
+                 amount: inv.amount,
+                 txHash: 'ADMIN-INIT',
+                 date: currentDate.toISOString().split('T')[0],
+                 investmentId: newInvId
+             }]);
+             // Update user total investment
+             newUser.totalInvestment += inv.amount;
+        }
+        
         alert("User created in Demo Mode");
         return;
     }
     alert("Admin User Creation requires Supabase Admin API (Service Role) to avoid logging out the current admin. Implement via Edge Function.");
-  }, []);
+  }, [currentDate, projects, investmentPools]);
 
   const updateUserRole = useCallback(async (userId: string, role: 'user' | 'admin') => {
     if (!supabase) {
@@ -1009,7 +1149,22 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, []);
 
   const seedDatabase = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase) {
+        // RESET TO DEFAULTS
+        setUsers(MOCK_USERS);
+        setInvestments(MOCK_INVESTMENTS);
+        setTransactions(MOCK_TRANSACTIONS);
+        setBonuses(MOCK_BONUSES);
+        setProjects(MOCK_PROJECTS);
+        setInvestmentPools(MOCK_INVESTMENT_POOLS);
+        setNews(MOCK_NEWS);
+        setNotifications([]);
+        localStorage.removeItem('igi_demo_session');
+        setCurrentUser(null);
+        alert('Demo data has been reset to defaults.');
+        return;
+    }
+    
     setLoading(true);
     try {
         // Projects
@@ -1062,6 +1217,33 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
   }, [refreshData]);
 
+  const sendReferralInvite = useCallback(async (email: string) => {
+    if (!currentUser) return;
+
+    if (!supabase) {
+        // Demo Mode
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+        alert(`Demo Mode: Invitation email simulated to ${email}`);
+        return;
+    }
+
+    try {
+        const { error } = await supabase.functions.invoke('send-referral-invite', {
+            body: {
+                email,
+                referralCode: currentUser.referralCode,
+                inviterName: currentUser.name,
+                referralLink: `${window.location.origin}?ref=${currentUser.referralCode}`
+            }
+        });
+        if (error) throw error;
+        alert(t('dashboard.referral.inviteSentAction'));
+    } catch (e) {
+        console.error('Error sending invite:', e);
+        alert('Failed to send email. Ensure the "send-referral-invite" Edge Function is deployed.');
+    }
+  }, [currentUser, t]);
+
   return (
     <AppContext.Provider value={{
       users, investments, transactions, bonuses, ranks, news, notifications, projects, investmentPools,
@@ -1076,7 +1258,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit, updateMinWithdrawalLimit,
-      seedDatabase,
+      seedDatabase, sendReferralInvite,
       login, signup, logout, loading,
       isDemoMode: !supabase
     }}>
