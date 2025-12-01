@@ -1244,6 +1244,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
 
     try {
+        console.log("Attempting to send email via Supabase Edge Function: send-referral-invite");
+        
         const { data, error } = await supabase.functions.invoke('send-referral-invite', {
             body: {
                 email,
@@ -1253,14 +1255,27 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             }
         });
         
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase Edge Function returned error:', error);
+            throw error; // Re-throw to be caught by the catch block below
+        }
         
         alert(t('dashboard.referral.inviteSentAction'));
     } catch (e: any) {
-        console.error('Supabase Edge Function failed:', e);
+        console.error('Supabase Edge Function failed (catch block):', e);
         
-        // Notify user of the server-side failure and fallback
-        alert(`Server email failed. Opening default mail client.`);
+        let errorMessage = e.message || "Unknown server error";
+        if (e.context && typeof e.context.json === 'function') {
+             try {
+                const json = await e.context.json();
+                if (json && json.error) errorMessage = json.error;
+             } catch(jsonError) {
+                 // Ignore JSON parsing error
+             }
+        }
+
+        // Notify user of the server-side failure specifics and fallback
+        alert(`Server-side email failed: ${errorMessage}. \n\nOpening default mail client as fallback.`);
         
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
