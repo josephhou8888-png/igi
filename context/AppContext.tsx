@@ -114,8 +114,7 @@ const getStoredData = <T,>(key: string, defaultData: T): T => {
 const setStoredData = <T,>(key: string, data: T) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    // Uncomment for debugging persistence
-    // console.log(`Saved ${key} to localStorage`);
+    console.log(`Saved ${key} to localStorage`); // Log enabled to verify persistence
   } catch (error) {
     console.error(`Error saving ${key} to localStorage:`, error);
   }
@@ -1256,7 +1255,13 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         alert(t('dashboard.referral.inviteSentAction'));
     } catch (e) {
         console.error('Error sending invite:', e);
-        alert('Failed to send email. Ensure the "send-referral-invite" Edge Function is deployed.');
+        const subject = t('dashboard.referral.emailSubject');
+        const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
+        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        if(window.confirm("Failed to send email via server (Edge Function not deployed?). Open default mail client instead?")) {
+            window.location.href = mailtoLink;
+        }
     }
   }, [currentUser, t]);
 
