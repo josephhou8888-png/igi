@@ -116,7 +116,7 @@ export const locales = {
       "withdrawModal.title": "Withdraw Funds",
       "withdrawModal.subtitle": "Withdraw your earnings to your external wallet.",
       "withdrawModal.amountLabel": "Amount to Withdraw (USDT)",
-      "withdrawModal.addressLabel": "Receiving Wallet Address",
+      "withdrawModal.addressLabel": "Tron Network Receiving Wallet Address",
       "withdrawModal.errorPositiveAmount": "Amount must be positive.",
       "withdrawModal.errorExceedsBalance": "Amount exceeds available balance.",
       "withdrawModal.errorExceedsLimit": "Amount exceeds the withdrawal limit of ${limit}.",
