@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useLocalization } from '../hooks/useLocalization';
 import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from '../types';
@@ -36,6 +35,7 @@ interface AppContextType {
   treasuryWallets: TreasuryWallets;
   socialLinks: PlatformSocialLinks;
   withdrawalLimit: number;
+  minWithdrawalLimit: number;
   currentUser: User | null;
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
@@ -82,6 +82,7 @@ interface AppContextType {
   updateTreasuryWallets: (wallets: TreasuryWallets) => void;
   updateSocialLinks: (links: PlatformSocialLinks) => void;
   updateWithdrawalLimit: (limit: number) => void;
+  updateMinWithdrawalLimit: (limit: number) => void;
   seedDatabase: () => Promise<void>;
   // Auth functions
   login: (email: string, password: string) => Promise<void>;
@@ -130,6 +131,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const [treasuryWallets, setTreasuryWallets] = useState<TreasuryWallets>(() => getStoredData('igi_wallets', INITIAL_TREASURY_WALLETS));
   const [socialLinks, setSocialLinks] = useState<PlatformSocialLinks>(() => getStoredData('igi_socials', INITIAL_PLATFORM_SOCIAL_LINKS));
   const [withdrawalLimit, setWithdrawalLimit] = useState<number>(() => getStoredData('igi_withdrawalLimit', 10000));
+  const [minWithdrawalLimit, setMinWithdrawalLimit] = useState<number>(() => getStoredData('igi_minWithdrawalLimit', 50));
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -328,6 +330,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   useEffect(() => { setStoredData('igi_wallets', treasuryWallets) }, [treasuryWallets]);
   useEffect(() => { setStoredData('igi_socials', socialLinks) }, [socialLinks]);
   useEffect(() => { setStoredData('igi_withdrawalLimit', withdrawalLimit) }, [withdrawalLimit]);
+  useEffect(() => { setStoredData('igi_minWithdrawalLimit', minWithdrawalLimit) }, [minWithdrawalLimit]);
 
 
   // --- AUTHENTICATION LOGIC ---
@@ -1001,6 +1004,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setWithdrawalLimit(limit);
   }, []);
 
+  const updateMinWithdrawalLimit = useCallback((limit: number) => {
+    setMinWithdrawalLimit(limit);
+  }, []);
+
   const seedDatabase = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
@@ -1058,7 +1065,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   return (
     <AppContext.Provider value={{
       users, investments, transactions, bonuses, ranks, news, notifications, projects, investmentPools,
-      instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks, withdrawalLimit,
+      instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks, withdrawalLimit, minWithdrawalLimit,
       currentUser, currentDate,
       addInvestmentFromBalance, addCryptoDeposit, addWithdrawal, updateKycStatus, toggleFreezeUser,
       markNotificationsAsRead, updateUser, deleteUser, deleteInvestment, updateRankSettings,
@@ -1068,7 +1075,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
       approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
-      updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit,
+      updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit, updateMinWithdrawalLimit,
       seedDatabase,
       login, signup, logout, loading,
       isDemoMode: !supabase

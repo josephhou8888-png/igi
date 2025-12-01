@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
@@ -9,9 +8,9 @@ interface WithdrawModalProps {
 }
 
 const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }) => {
-  const { addWithdrawal, currentUser, withdrawalLimit } = useAppContext();
+  const { addWithdrawal, currentUser, withdrawalLimit, minWithdrawalLimit } = useAppContext();
   const { t } = useLocalization();
-  const [amount, setAmount] = useState(100);
+  const [amount, setAmount] = useState<string>('100');
   const [walletAddress, setWalletAddress] = useState('');
   const [error, setError] = useState('');
 
@@ -23,15 +22,20 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (amount <= 0) {
+    const numericAmount = Number(amount);
+    if (numericAmount <= 0) {
       setError(t('withdrawModal.errorPositiveAmount'));
       return;
     }
-    if (amount > currentBalance) {
+    if (numericAmount < minWithdrawalLimit) {
+      setError(t('withdrawModal.errorMinWithdrawal', { limit: minWithdrawalLimit.toLocaleString() }));
+      return;
+    }
+    if (numericAmount > currentBalance) {
       setError(t('withdrawModal.errorExceedsBalance'));
       return;
     }
-    if (amount > withdrawalLimit) {
+    if (numericAmount > withdrawalLimit) {
         setError(t('withdrawModal.errorExceedsLimit', { limit: withdrawalLimit.toLocaleString() }));
         return;
     }
@@ -40,13 +44,25 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
         return;
     }
     setError('');
-    addWithdrawal(amount, currentBalance, walletAddress);
+    addWithdrawal(numericAmount, currentBalance, walletAddress);
     alert(t('withdrawModal.requestSuccess'));
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+      <style>{`
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        /* Firefox */
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
       <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <h2 className="text-2xl font-bold text-white mb-4">{t('withdrawModal.title')}</h2>
         <p className="text-gray-400 mb-2">{t('withdrawModal.subtitle')}</p>
@@ -60,15 +76,19 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
               type="number"
               id="amount"
               value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
+              onChange={(e) => setAmount(e.target.value)}
               className="w-full bg-gray-700 text-white rounded-md border-gray-600 px-4 py-2 focus:ring-brand-primary focus:border-brand-primary"
               min="1"
-              max={currentBalance}
-              step="100"
+              step="any"
             />
-            {withdrawalLimit > 0 && (
-                <p className="text-xs text-gray-500 mt-1">Limit: ${withdrawalLimit.toLocaleString()}</p>
-            )}
+            <div className="flex justify-between mt-1">
+                {minWithdrawalLimit > 0 && (
+                    <p className="text-xs text-gray-500">Min: ${minWithdrawalLimit.toLocaleString()}</p>
+                )}
+                {withdrawalLimit > 0 && (
+                    <p className="text-xs text-gray-500">Max: ${withdrawalLimit.toLocaleString()}</p>
+                )}
+            </div>
           </div>
           <div>
             <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-300 mb-2">
@@ -80,7 +100,7 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
               className="w-full bg-gray-700 text-white rounded-md border-gray-600 px-4 py-2 focus:ring-brand-primary focus:border-brand-primary font-mono text-sm"
-              placeholder="0x..."
+              placeholder="T..."
             />
           </div>
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}

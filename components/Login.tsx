@@ -272,53 +272,9 @@ const Login: React.FC = () => {
             </button>
         </div>
 
-        {isDemoMode ? (
+        {isDemoMode && (
             <div className="text-center text-xs text-gray-500 mt-4">
                 <p>{t('login.demoHint')}</p>
-                {!isSignup && (
-                    <div className="mt-2 bg-gray-700/50 p-3 rounded border border-gray-600/50 inline-block text-left space-y-3 w-full">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <span className="text-gray-400 text-[10px] uppercase tracking-wider block">User</span>
-                                <p className="font-mono text-white">alex@example.com</p>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-gray-400 text-[10px] uppercase tracking-wider block">Pass</span>
-                                <p className="font-mono text-white">password</p>
-                            </div>
-                        </div>
-                        <div className="border-t border-gray-600/50 pt-2 flex justify-between items-center">
-                            <div>
-                                <span className="text-brand-primary text-[10px] uppercase tracking-wider block font-bold">Admin</span>
-                                <p className="font-mono text-white">admin@igipartnership.com</p>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-brand-primary text-[10px] uppercase tracking-wider block font-bold">Pass</span>
-                                <p className="font-mono text-white">password</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-        ) : (
-            <div className="text-center text-xs text-gray-500 mt-4 bg-gray-700/30 p-4 rounded-lg border border-gray-600">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                    </span>
-                    <p className="text-green-400 font-bold text-sm">{t('login.liveSystem')}</p>
-                </div>
-                <div className="text-left space-y-2">
-                    <p className="font-semibold text-gray-300">{t('login.whyAdmin')}</p>
-                    <p>{t('login.adminExplanation')}</p>
-                    <p className="font-semibold text-gray-300 mt-2">{t('login.howToAdmin')}</p>
-                    <ol className="list-decimal list-inside space-y-1 ml-1">
-                        <li>{t('login.step1')}</li>
-                        <li>{t('login.step2')}</li>
-                        <li>{t('login.step3')}</li>
-                    </ol>
-                </div>
             </div>
         )}
       </div>

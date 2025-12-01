@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -13,6 +12,7 @@ const PlatformSettings: React.FC = () => {
         treasuryWallets, updateTreasuryWallets,
         socialLinks, updateSocialLinks,
         withdrawalLimit, updateWithdrawalLimit,
+        minWithdrawalLimit, updateMinWithdrawalLimit,
         seedDatabase, isDemoMode
     } = useAppContext();
     const { t } = useLocalization();
@@ -22,6 +22,7 @@ const PlatformSettings: React.FC = () => {
     const [localWallets, setLocalWallets] = useState<TreasuryWallets>(treasuryWallets);
     const [localSocialLinks, setLocalSocialLinks] = useState<PlatformSocialLinks>(socialLinks);
     const [localWithdrawalLimit, setLocalWithdrawalLimit] = useState(withdrawalLimit);
+    const [localMinWithdrawalLimit, setLocalMinWithdrawalLimit] = useState(minWithdrawalLimit);
 
     useEffect(() => {
         setLocalRanks(ranks);
@@ -30,7 +31,8 @@ const PlatformSettings: React.FC = () => {
         setLocalWallets(treasuryWallets);
         setLocalSocialLinks(socialLinks);
         setLocalWithdrawalLimit(withdrawalLimit);
-    }, [ranks, instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks, withdrawalLimit]);
+        setLocalMinWithdrawalLimit(minWithdrawalLimit);
+    }, [ranks, instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks, withdrawalLimit, minWithdrawalLimit]);
 
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
         const updatedRanks = localRanks.map(rank => {
@@ -66,6 +68,7 @@ const PlatformSettings: React.FC = () => {
         updateTreasuryWallets(localWallets);
         updateSocialLinks(localSocialLinks);
         updateWithdrawalLimit(localWithdrawalLimit);
+        updateMinWithdrawalLimit(localMinWithdrawalLimit);
     };
 
     const handleRunCycle = () => {
@@ -110,6 +113,15 @@ const PlatformSettings: React.FC = () => {
                             type="number" 
                             value={localWithdrawalLimit} 
                             onChange={e => setLocalWithdrawalLimit(Number(e.target.value))} 
+                            className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" 
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">{t('admin.settings.minWithdrawalAmount')}</label>
+                        <input 
+                            type="number" 
+                            value={localMinWithdrawalLimit} 
+                            onChange={e => setLocalMinWithdrawalLimit(Number(e.target.value))} 
                             className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" 
                         />
                     </div>
