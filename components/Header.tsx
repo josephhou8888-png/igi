@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, GithubIcon } from '../constants';
@@ -18,7 +18,25 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const currentLocaleData = locales[locale as keyof typeof locales];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   const allNotifications = useMemo(() => {
     if (!currentUser) return [];
@@ -135,7 +153,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
             )}
           </div>
           
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
               className="flex items-center space-x-2"
