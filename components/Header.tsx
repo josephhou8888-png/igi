@@ -1,14 +1,17 @@
+
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
-import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon } from '../constants';
+import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, GithubIcon } from '../constants';
 import { locales } from '../locales';
+import { View } from '../types';
 
 interface HeaderProps {
   onMenuClick: () => void;
+  onNavigate: (view: View) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
   const { currentUser, bonuses, notifications, logout, markNotificationsAsRead } = useAppContext();
   const { t, setLocale, locale } = useLocalization();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -74,6 +77,16 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           </div>
         </div>
         <div className="flex items-center space-x-2 sm:space-x-4">
+          <a 
+            href="https://github.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-gray-400 hover:text-white transition-colors"
+            title="View Source on GitHub"
+          >
+            <GithubIcon className="h-6 w-6" />
+          </a>
+
           <div className="relative">
             <button onClick={() => setIsLanguageOpen(!isLanguageOpen)} className="flex items-center justify-center h-10 w-10 rounded-full text-xl bg-gray-700 hover:bg-gray-600">
               {currentLocaleData.flag}
@@ -127,16 +140,22 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
               className="flex items-center space-x-2"
             >
-              <img src={currentUser.avatar} alt="User Avatar" className="h-10 w-10 rounded-full" />
+              <img src={currentUser.avatar} alt="User Avatar" className="h-10 w-10 rounded-full object-cover" />
               <span className="hidden md:inline text-white">{currentUser.name}</span>
               <ChevronDownIcon className={`h-5 w-5 text-gray-400 transition-transform hidden md:block ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50">
-                <a href="#profile" className="flex items-center px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
+                <button 
+                  onClick={() => {
+                    onNavigate(View.PROFILE);
+                    setIsDropdownOpen(false);
+                  }} 
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600"
+                >
                   <UserIcon className="w-4 h-4 mr-2" />
                   {t('header.profile')}
-                </a>
+                </button>
                 <button onClick={logout} className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600">
                   <LogOutIcon className="w-4 h-4 mr-2" />
                   {t('header.logout')}

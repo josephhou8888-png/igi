@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { locales } from '../locales';
-import { ChevronDownIcon } from '../constants';
+import { ChevronDownIcon, GithubIcon } from '../constants';
 
 const Login: React.FC = () => {
   const { login, signup, users, isDemoMode } = useAppContext();
@@ -86,6 +86,17 @@ const Login: React.FC = () => {
         
         {/* Top Right Controls Container */}
         <div className="absolute top-4 right-4 flex items-center space-x-3 z-20">
+            {/* Github Link */}
+            <a 
+              href="https://github.com" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center bg-gray-700 hover:bg-gray-600 text-white p-1.5 rounded-md border border-gray-600 transition-colors"
+              title="View Source"
+            >
+              <GithubIcon className="h-4 w-4 text-gray-300" />
+            </a>
+
             {/* Mode Indicator Badge */}
             <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDemoMode ? 'bg-yellow-900 text-yellow-300 border border-yellow-700' : 'bg-green-900 text-green-300 border border-green-700'}`}>
                 {isDemoMode ? t('login.demoMode') : t('login.liveMode')}

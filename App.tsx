@@ -79,7 +79,10 @@ const AppContent: React.FC = () => {
         setIsMobileOpen={setIsMobileSidebarOpen}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <Header 
+          onMenuClick={() => setIsMobileSidebarOpen(true)} 
+          onNavigate={(view) => setCurrentView(view)}
+        />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-900 p-4 sm:p-6 lg:p-8">
           {renderContent()}
         </main>

@@ -120,6 +120,7 @@ export const locales = {
       "withdrawModal.errorPositiveAmount": "Amount must be positive.",
       "withdrawModal.errorExceedsBalance": "Amount exceeds available balance.",
       "withdrawModal.errorExceedsLimit": "Amount exceeds the withdrawal limit of ${limit}.",
+      "withdrawModal.errorMinWithdrawal": "Amount must be at least ${limit}.",
       "withdrawModal.errorAddressRequired": "Wallet address is required.",
       "withdrawModal.withdrawFunds": "Request Withdrawal",
       "withdrawModal.requestSuccess": "Withdrawal requested successfully!",
@@ -328,6 +329,7 @@ export const locales = {
       "admin.settings.confirmRunCycle": "Are you sure you want to run the monthly cycle for {month}?",
       "admin.settings.withdrawalConfigTitle": "Withdrawal Configuration",
       "admin.settings.maxWithdrawalAmount": "Max Withdrawal Amount (USDT)",
+      "admin.settings.minWithdrawalAmount": "Min Withdrawal Amount (USDT)",
 
       "admin.editUser.title": "Edit User",
       "admin.editUser.name": "Name",

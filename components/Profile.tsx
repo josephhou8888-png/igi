@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
@@ -37,6 +38,13 @@ const Profile: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // File size check (limit to 1MB to avoid performance issues/database limits with base64)
+      if (file.size > 1024 * 1024) {
+          alert("Image size is too large. Please upload an image smaller than 1MB.");
+          return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, avatar: reader.result as string });
@@ -114,18 +122,26 @@ const Profile: React.FC = () => {
             <img 
                 src={formData.avatar || currentUser.avatar} 
                 alt="User Avatar" 
-                className={`w-32 h-32 rounded-full mb-4 border-4 border-gray-700 ${isEditing ? 'cursor-pointer group-hover:opacity-75' : ''} transition-opacity`} 
+                className={`w-32 h-32 rounded-full mb-4 border-4 border-gray-700 object-cover ${isEditing ? 'cursor-pointer group-hover:opacity-75' : ''} transition-opacity`} 
                 onClick={handleAvatarClick} 
             />
             {isEditing && (
               <div 
-                className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 rounded-full flex items-center justify-center mb-4 transition-colors cursor-pointer"
+                className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center mb-4 transition-colors cursor-pointer"
                 onClick={handleAvatarClick}
               >
-                <CameraIcon className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CameraIcon className="w-8 h-8 text-white" />
               </div>
             )}
             </div>
+            {isEditing && (
+                <button 
+                    onClick={handleAvatarClick}
+                    className="text-xs text-brand-primary hover:text-white mb-4 underline"
+                >
+                    Change Photo
+                </button>
+            )}
             <input
                 type="file"
                 ref={fileInputRef}
