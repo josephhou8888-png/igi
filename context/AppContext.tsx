@@ -1253,13 +1253,16 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         });
         if (error) throw error;
         alert(t('dashboard.referral.inviteSentAction'));
-    } catch (e) {
-        console.warn('Supabase Edge Function invite failed, falling back to mailto:', e);
+    } catch (e: any) {
+        console.warn('Supabase Edge Function invite failed:', e);
+        
+        // Notify user of server failure before falling back
+        alert(`Failed to send email via server: ${e.message || 'Unknown error'}. Switching to default mail client.`);
+        
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Automatically open default mail client on error (e.g., function not deployed)
         window.location.href = mailtoLink;
     }
   }, [currentUser, t]);
