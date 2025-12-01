@@ -9,7 +9,7 @@ interface WithdrawModalProps {
 }
 
 const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }) => {
-  const { addWithdrawal, currentUser } = useAppContext();
+  const { addWithdrawal, currentUser, withdrawalLimit } = useAppContext();
   const { t } = useLocalization();
   const [amount, setAmount] = useState(100);
   const [walletAddress, setWalletAddress] = useState('');
@@ -30,6 +30,10 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
     if (amount > currentBalance) {
       setError(t('withdrawModal.errorExceedsBalance'));
       return;
+    }
+    if (amount > withdrawalLimit) {
+        setError(t('withdrawModal.errorExceedsLimit', { limit: withdrawalLimit.toLocaleString() }));
+        return;
     }
     if (!walletAddress) {
         setError(t('withdrawModal.errorAddressRequired'));
@@ -62,6 +66,9 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
               max={currentBalance}
               step="100"
             />
+            {withdrawalLimit > 0 && (
+                <p className="text-xs text-gray-500 mt-1">Limit: ${withdrawalLimit.toLocaleString()}</p>
+            )}
           </div>
           <div>
             <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-300 mb-2">

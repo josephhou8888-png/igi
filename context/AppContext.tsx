@@ -35,6 +35,7 @@ interface AppContextType {
   teamBuilderBonusRates: number[];
   treasuryWallets: TreasuryWallets;
   socialLinks: PlatformSocialLinks;
+  withdrawalLimit: number;
   currentUser: User | null;
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
@@ -80,6 +81,7 @@ interface AppContextType {
   updateBonusRates: (newInstantRates: { investor: number, referrer: number, upline: number }, newTeamRates: number[]) => void;
   updateTreasuryWallets: (wallets: TreasuryWallets) => void;
   updateSocialLinks: (links: PlatformSocialLinks) => void;
+  updateWithdrawalLimit: (limit: number) => void;
   seedDatabase: () => Promise<void>;
   // Auth functions
   login: (email: string, password: string) => Promise<void>;
@@ -127,6 +129,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const [teamBuilderBonusRates, setTeamBuilderBonusRates] = useState(() => getStoredData('igi_teamRates', INITIAL_TEAM_BUILDER_BONUS_RATES));
   const [treasuryWallets, setTreasuryWallets] = useState<TreasuryWallets>(() => getStoredData('igi_wallets', INITIAL_TREASURY_WALLETS));
   const [socialLinks, setSocialLinks] = useState<PlatformSocialLinks>(() => getStoredData('igi_socials', INITIAL_PLATFORM_SOCIAL_LINKS));
+  const [withdrawalLimit, setWithdrawalLimit] = useState<number>(() => getStoredData('igi_withdrawalLimit', 10000));
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -324,6 +327,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   useEffect(() => { setStoredData('igi_teamRates', teamBuilderBonusRates) }, [teamBuilderBonusRates]);
   useEffect(() => { setStoredData('igi_wallets', treasuryWallets) }, [treasuryWallets]);
   useEffect(() => { setStoredData('igi_socials', socialLinks) }, [socialLinks]);
+  useEffect(() => { setStoredData('igi_withdrawalLimit', withdrawalLimit) }, [withdrawalLimit]);
 
 
   // --- AUTHENTICATION LOGIC ---
@@ -993,6 +997,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setSocialLinks(links);
   }, []);
 
+  const updateWithdrawalLimit = useCallback((limit: number) => {
+    setWithdrawalLimit(limit);
+  }, []);
+
   const seedDatabase = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
@@ -1050,7 +1058,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   return (
     <AppContext.Provider value={{
       users, investments, transactions, bonuses, ranks, news, notifications, projects, investmentPools,
-      instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks,
+      instantBonusRates, teamBuilderBonusRates, treasuryWallets, socialLinks, withdrawalLimit,
       currentUser, currentDate,
       addInvestmentFromBalance, addCryptoDeposit, addWithdrawal, updateKycStatus, toggleFreezeUser,
       markNotificationsAsRead, updateUser, deleteUser, deleteInvestment, updateRankSettings,
@@ -1060,7 +1068,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
       approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal,
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
-      updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks,
+      updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit,
       seedDatabase,
       login, signup, logout, loading,
       isDemoMode: !supabase

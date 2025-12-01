@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User } from '../../types';
@@ -21,10 +20,8 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   const [isOpen, setIsOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useLocalization();
 
-  // Calculate position and open menu
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isOpen) {
@@ -35,16 +32,14 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
     if (buttonRef.current) {
         const rect = buttonRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        const menuHeight = 360; // Approx height of menu
+        const menuHeight = 360; 
         
         // Determine if menu should open up or down based on space
-        // Using absolute positioning relative to document body
         let top = rect.bottom + window.scrollY;
         if (rect.bottom + menuHeight > windowHeight) {
             top = rect.top + window.scrollY - menuHeight;
         }
 
-        // Align to the left of the button (menu width approx 224px / w-56)
         const left = rect.right + window.scrollX - 224; 
 
         setMenuPosition({ top, left });
@@ -56,38 +51,30 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
     const handleScroll = () => {
         if (isOpen) setIsOpen(false);
     };
+    
     const handleClickOutside = (event: MouseEvent) => {
-      // Check if click is outside the button AND outside the menu
-      if (
-          buttonRef.current && 
-          !buttonRef.current.contains(event.target as Node) &&
-          menuRef.current &&
-          !menuRef.current.contains(event.target as Node)
-      ) {
+      // If we clicked outside the button, we close.
+      // Note: Clicks inside the menu stop propagation (onMouseDown), so they never reach here.
+      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
 
-    let scrollTimer: any;
-
     if (isOpen) {
-        // Add a small delay to attaching the scroll listener to prevent immediate closure
-        // if the click triggers a focus scroll
-        scrollTimer = setTimeout(() => {
-            window.addEventListener('scroll', handleScroll, true);
-        }, 50);
+        window.addEventListener('scroll', handleScroll, true);
         document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      clearTimeout(scrollTimer);
       window.removeEventListener('scroll', handleScroll, true);
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
 
   const handleActionClick = (e: React.MouseEvent, action: () => void) => {
-    e.stopPropagation();
+    // e.stopPropagation() is not strictly needed for the document listener due to onMouseDown on container,
+    // but good practice to stop React event bubbling if there were other handlers.
+    e.stopPropagation(); 
     setIsOpen(false);
     action();
   };
@@ -128,9 +115,10 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       
       {isOpen && createPortal(
         <div 
-            ref={menuRef}
             className="absolute z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
             style={{ top: menuPosition.top, left: menuPosition.left }}
+            // Stop mousedown propagation so document listener doesn't fire when clicking inside menu
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
         >
           <ul className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
