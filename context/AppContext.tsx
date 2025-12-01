@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useLocalization } from '../hooks/useLocalization';
 import { User, Investment, Transaction, Bonus, Rank, NewsPost, Notification, Project, InvestmentPool, TreasuryWallets, PlatformSocialLinks } from '../types';
@@ -1253,13 +1254,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         if (error) throw error;
         alert(t('dashboard.referral.inviteSentAction'));
     } catch (e) {
-        console.warn('Edge Function failed, falling back to mailto:', e);
+        console.warn('Supabase Edge Function invite failed, falling back to mailto:', e);
         const subject = t('dashboard.referral.emailSubject');
         const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
         const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Automatically open mail client with a clearer message
-        alert("The server-side email service is currently unavailable. We will open your default email client to send the invite.");
+        // Automatically open default mail client on error (e.g., function not deployed)
         window.location.href = mailtoLink;
     }
   }, [currentUser, t]);
