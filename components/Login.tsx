@@ -25,11 +25,26 @@ const Login: React.FC = () => {
   const currentLocaleData = locales[locale as keyof typeof locales];
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const refParam = params.get('ref');
-    if (refParam) {
-      setIsSignup(true);
-      setFormData(prev => ({ ...prev, referralCode: refParam }));
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const refParam = params.get('ref');
+        const path = window.location.pathname;
+
+        // Handle 404/Unknown paths by defaulting to Signup and redirecting to root
+        // This effectively catches any "page not found" logic for unauthenticated users
+        if (path !== '/' && path !== '/index.html') {
+            setIsSignup(true);
+            // Clean URL but preserve query params (like ref)
+            const newUrl = '/' + window.location.search;
+            window.history.replaceState(null, '', newUrl);
+        }
+
+        if (refParam) {
+          setIsSignup(true);
+          setFormData(prev => ({ ...prev, referralCode: refParam }));
+        }
+    } catch (e) {
+        console.warn("Could not access window.location or history:", e);
     }
   }, []);
 

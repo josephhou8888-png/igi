@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon, CheckCircleIcon } from '../constants';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon, CheckCircleIcon, CalendarIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -181,7 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card title={t('dashboard.cards.incomeToday')} value={`$${incomeToday.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-green-400" />} />
-        <Card title={t('dashboard.cards.incomeMonth')} value={`$${incomeThisMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-blue-400"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} />
+        <Card title={t('dashboard.cards.incomeMonth')} value={`$${incomeThisMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<CalendarIcon className="w-6 h-6 text-blue-400" />} />
         <Card title={t('dashboard.cards.lifetimeBonus')} value={`$${lifetimeEarnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<TrophyIcon className="w-6 h-6 text-yellow-400" />} />
         <Card title={t('dashboard.cards.totalProfits')} value={`$${totalProfits.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext={t('dashboard.cards.totalProfitsSubtext')} icon={<TrendingUpIcon className="w-6 h-6 text-green-400" />} />
       </div>
@@ -335,7 +335,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                                 value={`${inv.apy}%`} 
                             />
                             <InvestmentInfo 
-                                icon={<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-gray-300"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>} 
+                                icon={<CalendarIcon className="w-5 h-5 text-gray-300" />} 
                                 label={t('dashboard.myInvestments.startDate')} 
                                 value={new Date(inv.date).toLocaleDateString()} 
                             />
