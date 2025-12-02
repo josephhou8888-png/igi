@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { useToast } from '../hooks/useToast';
-import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, GithubIcon, CopyIcon, SearchIcon } from '../constants';
+import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, CopyIcon, SearchIcon } from '../constants';
 import { locales } from '../locales';
 import { View } from '../types';
 
@@ -124,16 +124,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
 
         {/* Right Section */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          <a 
-            href="https://github.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-gray-400 hover:text-white transition-colors hidden sm:block"
-            title="View Source on GitHub"
-          >
-            <GithubIcon className="h-6 w-6" />
-          </a>
-
           <div className="relative">
             <button onClick={() => setIsLanguageOpen(!isLanguageOpen)} className="flex items-center justify-center h-10 w-10 rounded-full text-xl bg-gray-700 hover:bg-gray-600">
               {currentLocaleData.flag}
