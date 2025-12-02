@@ -12,6 +12,7 @@ const Profile: React.FC = () => {
   const { t } = useLocalization();
   const { addToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,7 +33,7 @@ const Profile: React.FC = () => {
   };
 
   const handleAvatarClick = () => {
-    if (isEditing) {
+    if (isEditing && !isUploading) {
       fileInputRef.current?.click();
     }
   };
@@ -43,13 +44,21 @@ const Profile: React.FC = () => {
       
       // File size check (limit to 1MB to avoid performance issues/database limits with base64)
       if (file.size > 1024 * 1024) {
-          addToast("Image size is too large. Please upload an image smaller than 1MB.", 'error');
+          addToast(t('profile.imageSizeError'), 'error');
+          // Reset input so same file can be selected again if needed (though invalid here)
+          if (fileInputRef.current) fileInputRef.current.value = '';
           return;
       }
 
+      setIsUploading(true);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData({ ...formData, avatar: reader.result as string });
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+          addToast("Error reading file", 'error');
+          setIsUploading(false);
       };
       reader.readAsDataURL(file);
     }
@@ -121,36 +130,52 @@ const Profile: React.FC = () => {
 
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
         <div className="flex flex-col items-center md:items-start text-center md:text-left">
-          <div className="relative group">
+          
+          <div className="relative mb-4 group w-32 h-32">
             <img 
                 src={formData.avatar || currentUser.avatar} 
                 alt="User Avatar" 
-                className={`w-32 h-32 rounded-full mb-4 border-4 border-gray-700 object-cover ${isEditing ? 'cursor-pointer group-hover:opacity-75' : ''} transition-opacity`} 
-                onClick={handleAvatarClick} 
+                className={`w-full h-full rounded-full border-4 border-gray-700 object-cover transition-opacity ${isEditing ? 'cursor-pointer' : ''}`}
+                onClick={handleAvatarClick}
             />
-            {isEditing && (
+            
+            {/* Loading Spinner Overlay */}
+            {isUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 rounded-full z-20">
+                    <svg className="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            )}
+
+            {/* Edit Overlay */}
+            {isEditing && !isUploading && (
               <div 
-                className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center mb-4 transition-colors cursor-pointer"
+                className="absolute inset-0 bg-black bg-opacity-40 hover:bg-opacity-50 rounded-full flex items-center justify-center transition-all cursor-pointer group-hover:opacity-100"
                 onClick={handleAvatarClick}
               >
-                <CameraIcon className="w-8 h-8 text-white" />
+                <CameraIcon className="w-8 h-8 text-white opacity-80 group-hover:opacity-100" />
               </div>
             )}
-            </div>
-            {isEditing && (
+          </div>
+
+          {isEditing && (
                 <button 
                     onClick={handleAvatarClick}
-                    className="text-xs text-brand-primary hover:text-white mb-4 underline"
+                    className="text-xs text-brand-primary hover:text-white mb-4 underline cursor-pointer"
+                    disabled={isUploading}
                 >
-                    Change Photo
+                    {t('profile.editProfile')}
                 </button>
             )}
+            
             <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                accept="image/png, image/jpeg, image/gif"
+                accept="image/png, image/jpeg, image/jpg"
             />
           
           {isEditing ? (

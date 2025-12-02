@@ -2,7 +2,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
-import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, GithubIcon } from '../constants';
+import { useToast } from '../hooks/useToast';
+import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, GithubIcon, CopyIcon, SearchIcon } from '../constants';
 import { locales } from '../locales';
 import { View } from '../types';
 
@@ -14,9 +15,11 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
   const { currentUser, bonuses, notifications, logout, markNotificationsAsRead } = useAppContext();
   const { t, setLocale, locale } = useLocalization();
+  const { addToast } = useToast();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -82,24 +85,50 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
     setIsLanguageOpen(false);
   };
 
+  const copyReferralCode = () => {
+    if (currentUser) {
+        navigator.clipboard.writeText(currentUser.referralCode);
+        addToast(t('dashboard.referral.copied'), 'success');
+    }
+  };
+
   return (
-    <header className="flex-shrink-0 bg-gray-800 border-b border-gray-700">
+    <header className="flex-shrink-0 bg-gray-800 border-b border-gray-700 z-20">
       <div className="flex items-center justify-between p-4">
+        {/* Left Section */}
         <div className="flex items-center">
           <button onClick={onMenuClick} className="md:hidden mr-3 text-gray-400 hover:text-white">
             <MenuIcon className="h-6 w-6" />
           </button>
           <div>
-            <h1 className="text-lg sm:text-xl font-semibold text-white">{t('header.welcome')}, {currentUser.name}!</h1>
-            <p className="text-xs sm:text-sm text-gray-400">{t('header.financialOverview')}</p>
+            <h1 className="text-lg sm:text-xl font-semibold text-white whitespace-nowrap">{t('header.welcome')}, {currentUser.name}!</h1>
+            <p className="text-xs sm:text-sm text-gray-400 hidden sm:block">{t('header.financialOverview')}</p>
           </div>
         </div>
+
+        {/* Center Search Bar (Hidden on Mobile) */}
+        <div className="flex-1 max-w-xl px-4 lg:px-8 hidden md:block">
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <SearchIcon className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-lg leading-5 bg-gray-700 text-gray-300 placeholder-gray-400 focus:outline-none focus:bg-gray-600 focus:border-brand-primary focus:text-white sm:text-sm transition duration-150 ease-in-out"
+                    placeholder="Search projects, users..."
+                />
+            </div>
+        </div>
+
+        {/* Right Section */}
         <div className="flex items-center space-x-2 sm:space-x-4">
           <a 
             href="https://github.com" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors hidden sm:block"
             title="View Source on GitHub"
           >
             <GithubIcon className="h-6 w-6" />
@@ -152,6 +181,21 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
                </div>
             )}
           </div>
+
+          {/* Referral Code Badge - Visible on sm and larger */}
+          <div className="hidden sm:flex items-center bg-gray-700/50 hover:bg-gray-700 transition-colors border border-gray-600 rounded-full px-3 py-1.5 cursor-pointer group" onClick={copyReferralCode} title={t('dashboard.referral.copy')}>
+            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mr-2 group-hover:text-gray-300">Ref:</span>
+            <span className="text-sm font-mono text-white mr-2 group-hover:text-brand-primary transition-colors">{currentUser.referralCode}</span>
+            <CopyIcon className="w-3.5 h-3.5 text-gray-500 group-hover:text-white transition-colors" />
+          </div>
+
+          <button 
+            onClick={() => onNavigate(View.PROFILE)} 
+            className="text-gray-400 hover:text-white transition-colors"
+            title={t('header.profile')}
+          >
+            <UserIcon className="h-6 w-6" />
+          </button>
           
           <div className="relative" ref={dropdownRef}>
             <button 

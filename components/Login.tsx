@@ -6,10 +6,10 @@ import { locales } from '../locales';
 import { ChevronDownIcon } from '../constants';
 
 const Login: React.FC = () => {
-  const { login, signup, users, isDemoMode } = useAppContext();
+  const { login, signup, sendPasswordResetEmail, users, isDemoMode } = useAppContext();
   const { t, locale, setLocale } = useLocalization();
   
-  const [isSignup, setIsSignup] = useState(false);
+  const [view, setView] = useState<'login' | 'signup' | 'forgot'>('login');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +19,7 @@ const Login: React.FC = () => {
     country: ''
   });
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
@@ -33,14 +34,14 @@ const Login: React.FC = () => {
         // Handle 404/Unknown paths by defaulting to Signup and redirecting to root
         // This effectively catches any "page not found" logic for unauthenticated users
         if (path !== '/' && path !== '/index.html') {
-            setIsSignup(true);
+            setView('signup');
             // Clean URL but preserve query params (like ref)
             const newUrl = '/' + window.location.search;
             window.history.replaceState(null, '', newUrl);
         }
 
         if (refParam) {
-          setIsSignup(true);
+          setView('signup');
           setFormData(prev => ({ ...prev, referralCode: refParam }));
         }
     } catch (e) {
@@ -55,10 +56,11 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     try {
-      if (isSignup) {
+      if (view === 'signup') {
         if (formData.password !== formData.confirmPassword) {
           throw new Error(t('login.error.passwordMismatch'));
         }
@@ -80,6 +82,12 @@ const Login: React.FC = () => {
             uplineId: uplineId,
             country: formData.country || 'Global'
         });
+      } else if (view === 'forgot') {
+        if (!formData.email) {
+            throw new Error("Email is required");
+        }
+        await sendPasswordResetEmail(formData.email.trim());
+        setSuccessMsg("If an account exists for this email, you will receive a password reset link shortly.");
       } else {
         await login(formData.email.trim(), formData.password);
       }
@@ -140,7 +148,7 @@ const Login: React.FC = () => {
               IGI <span className="text-brand-primary">{t('sidebar.title')}</span>
             </h1>
             <p className="text-gray-400 text-sm">
-                {isSignup ? t('login.subtitle.signup') : t('login.subtitle.signin')}
+                {view === 'signup' ? t('login.subtitle.signup') : view === 'forgot' ? 'Reset your password' : t('login.subtitle.signin')}
             </p>
         </div>
 
@@ -149,10 +157,16 @@ const Login: React.FC = () => {
                 <span className="block sm:inline">{error}</span>
             </div>
         )}
+        
+        {successMsg && (
+            <div className="bg-green-900/50 border border-green-500 text-green-200 px-4 py-3 rounded relative text-sm" role="alert">
+                <span className="block sm:inline">{successMsg}</span>
+            </div>
+        )}
 
         <form className="space-y-5" onSubmit={handleSubmit}>
           
-          {isSignup && (
+          {view === 'signup' && (
             <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.fullName')}</label>
                 <input
@@ -182,37 +196,39 @@ const Login: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.password')}</label>
-                <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all"
-                    placeholder="••••••••"
-                    required
-                />
-              </div>
-              
-              {isSignup && (
+          {view !== 'forgot' && (
+            <div className="grid grid-cols-1 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.confirmPassword')}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.password')}</label>
                     <input
                         type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
+                        name="password"
+                        value={formData.password}
                         onChange={handleChange}
                         className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all"
                         placeholder="••••••••"
                         required
                     />
                 </div>
-              )}
-          </div>
+                
+                {view === 'signup' && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.confirmPassword')}</label>
+                        <input
+                            type="password"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all"
+                            placeholder="••••••••"
+                            required
+                        />
+                    </div>
+                )}
+            </div>
+          )}
 
-          {isSignup && (
+          {view === 'signup' && (
              <div className="grid grid-cols-2 gap-4">
                  <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">{t('login.country')}</label>
@@ -253,7 +269,7 @@ const Login: React.FC = () => {
                     {t('login.processing')}
                 </span>
             ) : (
-                isSignup ? t('login.createAccount') : t('login.signIn')
+                view === 'signup' ? t('login.createAccount') : view === 'forgot' ? 'Send Reset Link' : t('login.signIn')
             )}
           </button>
         </form>
@@ -267,13 +283,32 @@ const Login: React.FC = () => {
             </div>
         </div>
 
-        <div className="text-center">
-            <button 
-                onClick={() => { setIsSignup(!isSignup); setError(''); }}
-                className="text-brand-secondary hover:text-white text-sm font-medium transition-colors"
-            >
-                {isSignup ? t('login.haveAccount') : t('login.noAccount')}
-            </button>
+        <div className="flex flex-col space-y-2 text-center">
+            {view === 'forgot' ? (
+                <button 
+                    onClick={() => { setView('login'); setError(''); setSuccessMsg(''); }}
+                    className="text-brand-secondary hover:text-white text-sm font-medium transition-colors"
+                >
+                    Back to Sign In
+                </button>
+            ) : (
+                <>
+                    <button 
+                        onClick={() => { setView(view === 'login' ? 'signup' : 'login'); setError(''); setSuccessMsg(''); }}
+                        className="text-brand-secondary hover:text-white text-sm font-medium transition-colors"
+                    >
+                        {view === 'signup' ? t('login.haveAccount') : t('login.noAccount')}
+                    </button>
+                    {view === 'login' && (
+                        <button 
+                            onClick={() => { setView('forgot'); setError(''); setSuccessMsg(''); }}
+                            className="text-gray-400 hover:text-white text-xs transition-colors"
+                        >
+                            Forgot Password?
+                        </button>
+                    )}
+                </>
+            )}
         </div>
 
         {isDemoMode && (

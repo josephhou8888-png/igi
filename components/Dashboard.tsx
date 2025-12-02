@@ -31,12 +31,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       let thisMonth = 0;
       let lifetime = 0;
 
-      // Income is calculated from transactions to include all types (Bonus, Manual Bonus, Profit Share, etc.)
+      // Income is calculated from transactions
       transactions.forEach(t => {
           if (t.userId !== currentUser.id) return;
           if (t.status === 'rejected') return;
 
-          const isIncome = 
+          const isGeneralIncome = 
             t.type === 'Bonus' || 
             t.type === 'Manual Bonus' || 
             t.type === 'Profit Share' ||
@@ -45,7 +45,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             t.type === 'Leadership' ||
             t.type === 'Asset Growth';
 
-          if (isIncome) {
+          if (isGeneralIncome) {
+              // Lifetime and Monthly include ALL income types (Bonuses + Profit Share)
               lifetime += t.amount;
               
               // Normalize date to YYYY-MM-DD
@@ -55,7 +56,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                   thisMonth += t.amount;
               }
               
-              if (tDateStr === todayStr) {
+              // Income Today strictly shows 'Profit Share' (Investment Income) for the day
+              if (tDateStr === todayStr && t.type === 'Profit Share') {
                   today += t.amount;
               }
           }

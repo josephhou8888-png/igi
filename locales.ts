@@ -540,6 +540,7 @@ export const locales = {
       "profile.kyc.submittedAlert": "KYC Submitted for review!",
       "profile.achievements.title": "Achievements",
       "profile.achievements.noAchievements": "No achievements yet. Keep growing!",
+      "profile.imageSizeError": "Image must be smaller than 1MB.",
 
       "kyc.verified": "Verified",
       "kyc.pending": "Pending",
@@ -1138,6 +1139,7 @@ export const locales = {
         "profile.kyc.submittedAlert": "KYC已提交审核！",
         "profile.achievements.title": "成就",
         "profile.achievements.noAchievements": "暂无成就。继续成长！",
+        "profile.imageSizeError": "图片大小必须小于1MB。",
 
         "kyc.verified": "已验证",
         "kyc.pending": "审核中",
@@ -1736,6 +1738,7 @@ export const locales = {
         "profile.kyc.submittedAlert": "KYC已提交審核！",
         "profile.achievements.title": "成就",
         "profile.achievements.noAchievements": "暫無成就。繼續成長！",
+        "profile.imageSizeError": "圖片大小必須小於1MB。",
 
         "kyc.verified": "已驗證",
         "kyc.pending": "審核中",
@@ -2334,6 +2337,7 @@ export const locales = {
         "profile.kyc.submittedAlert": "KYCが審査に提出されました！",
         "profile.achievements.title": "実績",
         "profile.achievements.noAchievements": "まだ実績はありません。成長を続けましょう！",
+        "profile.imageSizeError": "画像サイズは1MB未満である必要があります。",
 
         "kyc.verified": "確認済み",
         "kyc.pending": "保留中",
@@ -2932,6 +2936,7 @@ export const locales = {
         "profile.kyc.submittedAlert": "¡KYC enviado para revisión!",
         "profile.achievements.title": "Logros",
         "profile.achievements.noAchievements": "Sin logros aún. ¡Sigue creciendo!",
+        "profile.imageSizeError": "La imagen debe ser menor de 1MB.",
 
         "kyc.verified": "Verificado",
         "kyc.pending": "Pendiente",
@@ -3530,6 +3535,7 @@ export const locales = {
         "profile.kyc.submittedAlert": "KYC soumis pour examen !",
         "profile.achievements.title": "Réalisations",
         "profile.achievements.noAchievements": "Aucune réalisation pour l'instant. Continuez à grandir !",
+        "profile.imageSizeError": "La taille de l'image doit être inférieure à 1 Mo.",
 
         "kyc.verified": "Vérifié",
         "kyc.pending": "En attente",

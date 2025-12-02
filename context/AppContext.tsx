@@ -90,6 +90,10 @@ interface AppContextType {
   login: (email: string, password: string) => Promise<void>;
   signup: (userData: Partial<User>) => Promise<void>;
   logout: () => void;
+  sendPasswordResetEmail: (email: string) => Promise<void>;
+  updateUserPassword: (password: string) => Promise<void>;
+  passwordResetMode: boolean;
+  setPasswordResetMode: (mode: boolean) => void;
   loading: boolean;
   isDemoMode: boolean;
 }
@@ -171,6 +175,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [passwordResetMode, setPasswordResetMode] = useState(false);
 
   const [solanaWalletAddress, setSolanaWalletAddress] = useState<string | null>(null);
   const [igiTokenBalance, setIgiTokenBalance] = useState<number | null>(null);
@@ -340,7 +345,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordResetMode(true);
+      }
+      
       if(session?.user) {
          refreshData(); // Reload data when auth changes
       } else {
@@ -513,6 +522,34 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       localStorage.removeItem('igi_demo_session');
       setCurrentUser(null);
   }, []);
+
+  const sendPasswordResetEmail = useCallback(async (email: string) => {
+    if (!supabase) {
+        // Demo mode simulation
+        console.log(`Sending password reset email to ${email}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        alert('Password reset email sent (Simulation).');
+        return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin
+    });
+    if (error) throw error;
+  }, []);
+
+  const updateUserPassword = useCallback(async (password: string) => {
+    if (!supabase) {
+        // Demo mode simulation
+        console.log(`Updating password to ${password}`);
+        if (currentUser) {
+            setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, password } : u));
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return;
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, [currentUser]);
 
 
   const addNotification = useCallback(async (notification: Omit<Notification, 'id'>) => {
@@ -1336,8 +1373,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit, updateMinWithdrawalLimit,
       seedDatabase, sendReferralInvite,
-      login, signup, logout, loading,
-      isDemoMode: !supabase
+      login, signup, logout, 
+      sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode,
+      loading, isDemoMode: !supabase
     }}>
       {children}
     </AppContext.Provider>

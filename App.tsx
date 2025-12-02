@@ -8,6 +8,7 @@ import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import ToastContainer from './components/ui/ToastContainer';
+import PasswordResetModal from './components/PasswordResetModal';
 import { View } from './types';
 
 // Lazy Load heavy components to improve initial render time
@@ -89,6 +90,7 @@ const AppContent: React.FC = () => {
         <>
             <Login />
             <ToastContainer />
+            <PasswordResetModal />
         </>
     );
   }
@@ -116,6 +118,7 @@ const AppContent: React.FC = () => {
         </main>
       </div>
       <ToastContainer />
+      <PasswordResetModal />
     </div>
   );
 };
