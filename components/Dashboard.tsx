@@ -12,7 +12,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite } = useAppContext();
+  const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite, users } = useAppContext();
   const { t } = useLocalization();
   const { addToast } = useToast(); // Initialize toast hook
   const [inviteEmail, setInviteEmail] = useState('');
@@ -21,49 +21,53 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   
   if (!currentUser) return <div>{t('dashboard.loading')}</div>;
 
-  const { incomeToday, incomeThisMonth, lifetimeEarnings } = useMemo(() => {
-      if (!currentUser) return { incomeToday: 0, incomeThisMonth: 0, lifetimeEarnings: 0 };
+  const { incomeToday, incomeThisMonth, lifetimeBonuses } = useMemo(() => {
+      if (!currentUser) return { incomeToday: 0, incomeThisMonth: 0, lifetimeBonuses: 0 };
       
       const todayStr = currentDate.toISOString().split('T')[0];
       const currentMonthPrefix = todayStr.substring(0, 7); // YYYY-MM
 
       let today = 0;
       let thisMonth = 0;
-      let lifetime = 0;
+      let lifetimeBonusTotal = 0;
 
       // Income is calculated from transactions
       transactions.forEach(t => {
           if (t.userId !== currentUser.id) return;
           if (t.status === 'rejected') return;
 
-          const isGeneralIncome = 
+          const isProfitShare = t.type === 'Profit Share';
+          
+          // Bonus types (Affiliate/Referral income)
+          const isBonus = 
             t.type === 'Bonus' || 
             t.type === 'Manual Bonus' || 
-            t.type === 'Profit Share' ||
             t.type === 'Instant' ||
             t.type === 'Team Builder' ||
             t.type === 'Leadership' ||
             t.type === 'Asset Growth';
 
-          if (isGeneralIncome) {
-              // Lifetime and Monthly include ALL income types (Bonuses + Profit Share)
-              lifetime += t.amount;
-              
-              // Normalize date to YYYY-MM-DD
+          if (isBonus || isProfitShare) {
               const tDateStr = t.date.length >= 10 ? t.date.substring(0, 10) : t.date;
               
+              // Monthly Income (Includes BOTH Bonuses and Profit Share)
               if (tDateStr.startsWith(currentMonthPrefix)) {
                   thisMonth += t.amount;
               }
               
-              // Income Today strictly shows 'Profit Share' (Investment Income) for the day
-              if (tDateStr === todayStr && t.type === 'Profit Share') {
+              // Income Today (Strictly Investment Profit Share per request)
+              if (tDateStr === todayStr && isProfitShare) {
                   today += t.amount;
+              }
+
+              // Lifetime Bonus (Strictly Affiliate/Network Bonuses)
+              if (isBonus) {
+                  lifetimeBonusTotal += t.amount;
               }
           }
       });
 
-      return { incomeToday: today, incomeThisMonth: thisMonth, lifetimeEarnings: lifetime };
+      return { incomeToday: today, incomeThisMonth: thisMonth, lifetimeBonuses: lifetimeBonusTotal };
   }, [transactions, currentUser, currentDate]);
 
   const { depositBalance } = useMemo(() => {
@@ -71,6 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     return getUserBalances(currentUser.id);
   }, [currentUser, getUserBalances]);
 
+  // Total Investment Return (ROI)
   const totalProfits = useMemo(() => {
     if (!currentUser) return 0;
     return investments
@@ -108,17 +113,55 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [investments, currentUser, projects, investmentPools]);
 
+  const directReferrals = useMemo(() => {
+    if (!currentUser) return [];
+    
+    // Get all users who have current user as upline
+    const directs = users.filter(u => u.uplineId === currentUser.id);
+    
+    // Calculate bonuses earned from each direct
+    const referralStats = directs.map(referral => {
+        // Find investments made by this referral
+        const referralInvestments = investments.filter(i => i.userId === referral.id);
+        const investmentIds = new Set(referralInvestments.map(i => i.id));
+        
+        // Find bonuses received by currentUser that originated from these investments
+        // Note: This logic assumes 'Instant' and 'Team Builder' bonuses usually link back to the source investment in sourceId
+        const earnedFromUser = bonuses
+            .filter(b => b.userId === currentUser.id && (b.type === 'Instant' || b.type === 'Team Builder') && investmentIds.has(b.sourceId))
+            .reduce((sum, b) => sum + b.amount, 0);
+
+        return {
+            ...referral,
+            earnedFromUser
+        };
+    });
+
+    return referralStats.sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime());
+  }, [users, currentUser, investments, bonuses]);
+
 
   const incomeChartData = useMemo(() => {
       if (!currentUser) return [];
       const monthlyData: { [key: string]: number } = {};
       
-      // Use bonuses array for chart as it's specifically for earnings history
-      bonuses
-          .filter(b => b.userId === currentUser.id)
-          .forEach(b => {
-              const month = new Date(b.date).toLocaleString('default', { month: 'short', year: '2-digit' });
-              monthlyData[month] = (monthlyData[month] || 0) + b.amount;
+      // Changed from 'bonuses' array to 'transactions' array to include Profit Share in the chart
+      transactions
+          .filter(t => t.userId === currentUser.id && t.status !== 'rejected')
+          .forEach(t => {
+              const isIncome = 
+                t.type === 'Bonus' || 
+                t.type === 'Manual Bonus' || 
+                t.type === 'Profit Share' ||
+                t.type === 'Instant' ||
+                t.type === 'Team Builder' ||
+                t.type === 'Leadership' ||
+                t.type === 'Asset Growth';
+
+              if (isIncome) {
+                  const month = new Date(t.date).toLocaleString('default', { month: 'short', year: '2-digit' });
+                  monthlyData[month] = (monthlyData[month] || 0) + t.amount;
+              }
           });
       
       const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
@@ -133,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           name: month,
           income: monthlyData[month]
       }));
-  }, [bonuses, currentUser]);
+  }, [transactions, currentUser]);
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(currentUser.referralCode);
@@ -206,7 +249,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card title={t('dashboard.cards.incomeToday')} value={`$${incomeToday.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-green-400" />} />
         <Card title={t('dashboard.cards.incomeMonth')} value={`$${incomeThisMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<CalendarIcon className="w-6 h-6 text-blue-400" />} />
-        <Card title={t('dashboard.cards.lifetimeBonus')} value={`$${lifetimeEarnings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<TrophyIcon className="w-6 h-6 text-yellow-400" />} />
+        <Card title={t('dashboard.cards.lifetimeBonus')} value={`$${lifetimeBonuses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<TrophyIcon className="w-6 h-6 text-yellow-400" />} />
         <Card title={t('dashboard.cards.totalProfits')} value={`$${totalProfits.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext={t('dashboard.cards.totalProfitsSubtext')} icon={<TrendingUpIcon className="w-6 h-6 text-green-400" />} />
       </div>
 
@@ -378,6 +421,45 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                 </button>
             </div>
          )}
+      </div>
+
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+        <h3 className="text-lg font-semibold text-white mb-4">{t('dashboard.directReferrals.title')}</h3>
+        {directReferrals.length > 0 ? (
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-gray-300">
+                    <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                        <tr>
+                            <th className="px-4 py-3">{t('dashboard.directReferrals.user')}</th>
+                            <th className="px-4 py-3">{t('dashboard.directReferrals.joinDate')}</th>
+                            <th className="px-4 py-3">{t('dashboard.directReferrals.status')}</th>
+                            <th className="px-4 py-3 text-right">{t('dashboard.directReferrals.investment')}</th>
+                            <th className="px-4 py-3 text-right">{t('dashboard.directReferrals.earned')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {directReferrals.map(ref => (
+                            <tr key={ref.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                                <td className="px-4 py-3 flex items-center gap-2">
+                                    <img src={ref.avatar} alt="" className="w-6 h-6 rounded-full" />
+                                    <span className="font-medium text-white">{ref.name}</span>
+                                </td>
+                                <td className="px-4 py-3">{ref.joinDate}</td>
+                                <td className="px-4 py-3">
+                                    <span className={`px-2 py-0.5 rounded text-xs ${ref.isFrozen ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
+                                        {ref.isFrozen ? 'Frozen' : 'Active'}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-white font-medium">${ref.totalInvestment.toLocaleString()}</td>
+                                <td className="px-4 py-3 text-right text-green-400 font-medium">+${ref.earnedFromUser.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        ) : (
+            <p className="text-gray-400 text-center py-4">{t('dashboard.directReferrals.noReferrals')}</p>
+        )}
       </div>
       
     </div>
