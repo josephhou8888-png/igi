@@ -150,6 +150,7 @@ export const locales = {
       "reinvestModal.investmentSource": "Source",
       "reinvestModal.noSelectionError": "Please select an asset.",
 
+      "investModal.title": "Invest in {project}",
       "investModal.projectLabel": "Project",
       "investModal.amountLabel": "Amount (USDT)",
       "investModal.errorMinInvestment": "Minimum investment for {projectName} is ${minInvestment}",
@@ -749,6 +750,7 @@ export const locales = {
         "reinvestModal.investmentSource": "来源",
         "reinvestModal.noSelectionError": "请选择一项资产。",
 
+        "investModal.title": "投资于 {project}",
         "investModal.projectLabel": "项目",
         "investModal.amountLabel": "金额 (USDT)",
         "investModal.errorMinInvestment": "{projectName} 的最低投资额为 ${minInvestment}",
@@ -1348,6 +1350,7 @@ export const locales = {
         "reinvestModal.investmentSource": "來源",
         "reinvestModal.noSelectionError": "請選擇一項資產。",
 
+        "investModal.title": "投資於 {project}",
         "investModal.projectLabel": "項目",
         "investModal.amountLabel": "金額 (USDT)",
         "investModal.errorMinInvestment": "{projectName} 的最低投資額為 ${minInvestment}",
@@ -1947,6 +1950,7 @@ export const locales = {
         "reinvestModal.investmentSource": "ソース",
         "reinvestModal.noSelectionError": "資産を選択してください。",
 
+        "investModal.title": "投資先: {project}",
         "investModal.projectLabel": "プロジェクト",
         "investModal.amountLabel": "金額 (USDT)",
         "investModal.errorMinInvestment": "{projectName} の最低投資額は ${minInvestment} です",
@@ -2546,6 +2550,7 @@ export const locales = {
         "reinvestModal.investmentSource": "Origen",
         "reinvestModal.noSelectionError": "Por favor selecciona un activo.",
 
+        "investModal.title": "Invertir en {project}",
         "investModal.projectLabel": "Proyecto",
         "investModal.amountLabel": "Monto (USDT)",
         "investModal.errorMinInvestment": "La inversión mínima para {projectName} es ${minInvestment}",
@@ -3145,6 +3150,7 @@ export const locales = {
         "reinvestModal.investmentSource": "Source",
         "reinvestModal.noSelectionError": "Veuillez sélectionner un actif.",
 
+        "investModal.title": "Investir dans {project}",
         "investModal.projectLabel": "Projet",
         "investModal.amountLabel": "Montant (USDT)",
         "investModal.errorMinInvestment": "L'investissement minimum pour {projectName} est de ${minInvestment}",
