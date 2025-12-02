@@ -94,6 +94,9 @@ interface AppContextType {
   updateUserPassword: (password: string) => Promise<void>;
   passwordResetMode: boolean;
   setPasswordResetMode: (mode: boolean) => void;
+  // UI State
+  inviteModalOpen: boolean;
+  setInviteModalOpen: (open: boolean) => void;
   loading: boolean;
   isDemoMode: boolean;
 }
@@ -176,6 +179,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   // Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [passwordResetMode, setPasswordResetMode] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const [solanaWalletAddress, setSolanaWalletAddress] = useState<string | null>(null);
   const [igiTokenBalance, setIgiTokenBalance] = useState<number | null>(null);
@@ -1375,6 +1379,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       seedDatabase, sendReferralInvite,
       login, signup, logout, 
       sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode,
+      inviteModalOpen, setInviteModalOpen,
       loading, isDemoMode: !supabase
     }}>
       {children}

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { useToast } from '../hooks/useToast';
-import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, CopyIcon, SearchIcon } from '../constants';
+import { BellIcon, ChevronDownIcon, LogOutIcon, UserIcon, MenuIcon, CopyIcon, SearchIcon, UserPlusIcon } from '../constants';
 import { locales } from '../locales';
 import { View } from '../types';
 
@@ -13,7 +13,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
-  const { currentUser, bonuses, notifications, logout, markNotificationsAsRead } = useAppContext();
+  const { currentUser, bonuses, notifications, logout, markNotificationsAsRead, setInviteModalOpen } = useAppContext();
   const { t, setLocale, locale } = useLocalization();
   const { addToast } = useToast();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -23,7 +23,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
   
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentLocaleData = locales[locale as keyof typeof locales];
+  // Fallback to English if the current locale is not found in the locales object
+  const currentLocaleData = locales[locale as keyof typeof locales] || locales['en'];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -145,6 +146,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
               </div>
             )}
           </div>
+
+          <button 
+            onClick={() => setInviteModalOpen(true)}
+            className="text-gray-400 hover:text-white transition-colors"
+            title={t('inviteModal.title')}
+          >
+            <UserPlusIcon className="h-6 w-6" />
+          </button>
 
           <div className="relative">
             <button onClick={handleNotificationsToggle} className="relative text-gray-400 hover:text-white">

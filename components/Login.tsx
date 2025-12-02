@@ -23,7 +23,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
 
-  const currentLocaleData = locales[locale as keyof typeof locales];
+  const currentLocaleData = locales[locale as keyof typeof locales] || locales['en'];
 
   useEffect(() => {
     try {

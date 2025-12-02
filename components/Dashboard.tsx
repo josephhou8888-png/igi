@@ -1,10 +1,10 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
-import { useToast } from '../hooks/useToast'; // Import useToast
+import { useToast } from '../hooks/useToast';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon, CheckCircleIcon, CalendarIcon } from '../constants';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, UserPlusIcon, WalletIcon, CalendarIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -12,12 +12,9 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite, users } = useAppContext();
+  const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, users, setInviteModalOpen } = useAppContext();
   const { t } = useLocalization();
-  const { addToast } = useToast(); // Initialize toast hook
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [isInviting, setIsInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const { addToast } = useToast();
   
   if (!currentUser) return <div>{t('dashboard.loading')}</div>;
 
@@ -180,7 +177,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(currentUser.referralCode);
-    addToast(t('dashboard.referral.copied'), 'success'); // Use toast
+    addToast(t('dashboard.referral.copied'), 'success');
   };
 
   const handleShare = async () => {
@@ -195,28 +192,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         console.error('Error sharing referral code:', error);
       }
     } else {
-      addToast(t('dashboard.share.notSupported'), 'info'); // Use toast
+      addToast(t('dashboard.share.notSupported'), 'info');
     }
   };
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteEmail) return;
-    
-    setIsInviting(true);
-    setInviteSuccess(false);
-    try {
-        await sendReferralInvite(inviteEmail);
-        setInviteEmail('');
-        setInviteSuccess(true);
-        setTimeout(() => setInviteSuccess(false), 3000);
-        addToast(t('dashboard.referral.inviteSentAction'), 'success'); // Toast on successful invite
-    } catch (error) {
-        // AppContext handles specific error alerts/fallbacks, but we can catch here if needed
-    } finally {
-        setIsInviting(false);
-    }
-  }
 
   const Card: React.FC<{ title: string; value: string | number; subtext?: string, icon: React.ReactNode }> = ({ title, value, subtext, icon }) => (
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4">
@@ -273,49 +251,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
               </div>
             </div>
             
-            {/* Redesigned Invite via Email Section */}
             <div className="border-t border-gray-600 pt-4">
-                <label className="text-xs uppercase font-bold text-gray-400 mb-2 block tracking-wider">
-                    {t('dashboard.referral.inviteTitle')}
-                </label>
-                <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-2">
-                    <div className="relative flex-grow">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <MailIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input 
-                            type="email" 
-                            value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
-                            placeholder={t('dashboard.referral.emailPlaceholder')}
-                            className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-md pl-10 pr-4 py-2 focus:ring-1 focus:ring-brand-primary focus:border-brand-primary transition-colors placeholder-gray-500"
-                            required
-                        />
-                    </div>
-                    <button 
-                        type="submit"
-                        disabled={isInviting || inviteSuccess}
-                        className={`px-4 py-2 rounded-md font-medium text-sm transition-all flex items-center justify-center whitespace-nowrap shadow-md ${
-                            inviteSuccess 
-                            ? 'bg-green-600 text-white cursor-default' 
-                            : 'bg-brand-primary hover:bg-brand-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed'
-                        }`}
-                    >
-                        {isInviting ? (
-                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                        ) : inviteSuccess ? (
-                            <>
-                                <CheckCircleIcon className="w-5 h-5 mr-1" />
-                                Sent!
-                            </>
-                        ) : (
-                            t('dashboard.referral.send')
-                        )}
-                    </button>
-                </form>
+                <button 
+                    onClick={() => setInviteModalOpen(true)}
+                    className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                >
+                    <UserPlusIcon className="w-5 h-5" />
+                    <span>{t('dashboard.referral.inviteTitle')}</span>
+                </button>
             </div>
           </div>
         </div>
