@@ -6,11 +6,14 @@ import { Transaction, Bonus } from '../../types';
 
 type AllFinancialEvent = (Transaction | (Bonus & { txHash: string, reason?: string })) & { eventType: 'Transaction' | 'Bonus' };
 
+const ITEMS_PER_PAGE = 15;
+
 const TransactionsLog: React.FC = () => {
   const { transactions, bonuses, users } = useAppContext();
   const { t } = useLocalization();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [currentPage, setCurrentPage] = useState(1);
 
   const allEvents = useMemo(() => {
     const bonusEvents: AllFinancialEvent[] = bonuses.map(b => ({
@@ -57,6 +60,13 @@ const TransactionsLog: React.FC = () => {
     return filtered;
   }, [allEvents, searchTerm, users, dateRange]);
 
+  const paginatedEvents = useMemo(() => {
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      return filteredEvents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredEvents, currentPage]);
+
+  const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+
   const getUserName = (userId: string) => users.find(u => u.id === userId)?.name || 'N/A';
   
   const getAmountClass = (type: string) => {
@@ -65,6 +75,16 @@ const TransactionsLog: React.FC = () => {
       if(positiveTypes.includes(type)) return 'text-green-400';
       if(negativeTypes.includes(type)) return 'text-red-400';
       return 'text-yellow-400';
+  }
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchTerm(e.target.value);
+      setCurrentPage(1); // Reset to page 1 on search
+  }
+
+  const handleDateChange = (type: 'start' | 'end', value: string) => {
+      setDateRange(prev => ({ ...prev, [type]: value }));
+      setCurrentPage(1); // Reset to page 1 on date filter
   }
 
   return (
@@ -78,7 +98,7 @@ const TransactionsLog: React.FC = () => {
                     <input
                         type="date"
                         value={dateRange.start}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        onChange={(e) => handleDateChange('start', e.target.value)}
                         className="bg-gray-700 text-white rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     />
                 </div>
@@ -87,7 +107,7 @@ const TransactionsLog: React.FC = () => {
                     <input
                         type="date"
                         value={dateRange.end}
-                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        onChange={(e) => handleDateChange('end', e.target.value)}
                         className="bg-gray-700 text-white rounded-md px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     />
                 </div>
@@ -98,13 +118,13 @@ const TransactionsLog: React.FC = () => {
                     type="text"
                     placeholder={t('admin.transactions.searchPlaceholder')}
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={handleSearchChange}
                     className="bg-gray-700 text-white rounded-md px-4 py-2 text-sm w-full sm:w-64 focus:outline-none focus:ring-1 focus:ring-brand-primary"
                 />
             </div>
         </div>
       </div>
-      <div className="overflow-x-auto max-h-[600px]">
+      <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-gray-300">
           <thead className="text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
             <tr>
@@ -116,7 +136,7 @@ const TransactionsLog: React.FC = () => {
             </tr>
           </thead>
           <tbody className="bg-gray-800">
-            {filteredEvents.map(event => (
+            {paginatedEvents.map(event => (
               <tr key={`${event.eventType}-${event.id}`} className="border-b border-gray-700 hover:bg-gray-600">
                 <td className="px-6 py-4 whitespace-nowrap">{new Date(event.date).toLocaleDateString()}</td>
                 <td className="px-6 py-4 font-medium text-white">{getUserName(event.userId)}</td>
@@ -148,6 +168,30 @@ const TransactionsLog: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+            <div className="text-sm text-gray-400">
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredEvents.length)} of {filteredEvents.length} records
+            </div>
+            <div className="flex space-x-2">
+                <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                    Previous
+                </button>
+                <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                    Next
+                </button>
+            </div>
+        </div>
+      )}
     </div>
   );
 };

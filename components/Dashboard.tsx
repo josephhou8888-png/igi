@@ -4,7 +4,8 @@ import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { useToast } from '../hooks/useToast';
 import IncomeChart from './charts/IncomeChart';
-import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, UserPlusIcon, WalletIcon, CalendarIcon } from '../constants';
+import LoadingSpinner from './ui/LoadingSpinner';
+import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, UserPlusIcon, WalletIcon, CalendarIcon, UsersIcon } from '../constants';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -16,8 +17,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const { t } = useLocalization();
   const { addToast } = useToast();
   
-  if (!currentUser) return <div>{t('dashboard.loading')}</div>;
-
   const { incomeToday, incomeThisMonth, lifetimeBonuses } = useMemo(() => {
       if (!currentUser) return { incomeToday: 0, incomeThisMonth: 0, lifetimeBonuses: 0 };
       
@@ -28,14 +27,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       let thisMonth = 0;
       let lifetimeBonusTotal = 0;
 
-      // Income is calculated from transactions
       transactions.forEach(t => {
           if (t.userId !== currentUser.id) return;
           if (t.status === 'rejected') return;
 
           const isProfitShare = t.type === 'Profit Share';
-          
-          // Bonus types (Affiliate/Referral income)
           const isBonus = 
             t.type === 'Bonus' || 
             t.type === 'Manual Bonus' || 
@@ -47,17 +43,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           if (isBonus || isProfitShare) {
               const tDateStr = t.date.length >= 10 ? t.date.substring(0, 10) : t.date;
               
-              // Monthly Income (Includes BOTH Bonuses and Profit Share)
               if (tDateStr.startsWith(currentMonthPrefix)) {
                   thisMonth += t.amount;
               }
               
-              // Income Today (Strictly Investment Profit Share per request)
               if (tDateStr === todayStr && isProfitShare) {
                   today += t.amount;
               }
 
-              // Lifetime Bonus (Strictly Affiliate/Network Bonuses)
               if (isBonus) {
                   lifetimeBonusTotal += t.amount;
               }
@@ -72,7 +65,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     return getUserBalances(currentUser.id);
   }, [currentUser, getUserBalances]);
 
-  // Total Investment Return (ROI)
   const totalProfits = useMemo(() => {
     if (!currentUser) return 0;
     return investments
@@ -112,28 +104,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
 
   const directReferrals = useMemo(() => {
     if (!currentUser) return [];
-    
-    // Get all users who have current user as upline
     const directs = users.filter(u => u.uplineId === currentUser.id);
-    
-    // Calculate bonuses earned from each direct
     const referralStats = directs.map(referral => {
-        // Find investments made by this referral
         const referralInvestments = investments.filter(i => i.userId === referral.id);
         const investmentIds = new Set(referralInvestments.map(i => i.id));
-        
-        // Find bonuses received by currentUser that originated from these investments
-        // Note: This logic assumes 'Instant' and 'Team Builder' bonuses usually link back to the source investment in sourceId
         const earnedFromUser = bonuses
             .filter(b => b.userId === currentUser.id && (b.type === 'Instant' || b.type === 'Team Builder') && investmentIds.has(b.sourceId))
             .reduce((sum, b) => sum + b.amount, 0);
 
-        return {
-            ...referral,
-            earnedFromUser
-        };
+        return { ...referral, earnedFromUser };
     });
-
     return referralStats.sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime());
   }, [users, currentUser, investments, bonuses]);
 
@@ -141,8 +121,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const incomeChartData = useMemo(() => {
       if (!currentUser) return [];
       const monthlyData: { [key: string]: number } = {};
-      
-      // Changed from 'bonuses' array to 'transactions' array to include Profit Share in the chart
       transactions
           .filter(t => t.userId === currentUser.id && t.status !== 'rejected')
           .forEach(t => {
@@ -176,12 +154,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   }, [transactions, currentUser]);
   
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(currentUser.referralCode);
-    addToast(t('dashboard.referral.copied'), 'success');
+    if (currentUser) {
+        navigator.clipboard.writeText(currentUser.referralCode);
+        addToast(t('dashboard.referral.copied'), 'success');
+    }
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
+    if (currentUser && navigator.share) {
       try {
         await navigator.share({
           title: t('dashboard.share.title'),
@@ -196,8 +176,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
     }
   };
 
+  if (!currentUser) return <LoadingSpinner />;
+
   const Card: React.FC<{ title: string; value: string | number; subtext?: string, icon: React.ReactNode }> = ({ title, value, subtext, icon }) => (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4">
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg flex items-start space-x-4 border border-gray-700/50">
       <div className="bg-gray-700 p-3 rounded-full">
         {icon}
       </div>
@@ -219,8 +201,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             <p className="font-semibold text-white text-sm">{value}</p>
         </div>
     </div>
-);
-
+  );
 
   return (
     <div className="space-y-6">
@@ -235,7 +216,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         <Card title={t('dashboard.cards.totalInvestment')} value={`$${currentUser.totalInvestment.toLocaleString()}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-gray-300" />}/>
         <Card title={t('wallet.depositBalance')} value={`$${depositBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<WalletIcon className="w-6 h-6 text-blue-400" />} />
         
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:col-span-2 lg:col-span-2">
+        <div className="bg-gray-800 p-6 rounded-lg shadow-lg space-y-4 md:col-span-2 lg:col-span-2 border border-gray-700/50">
           <h3 className="text-lg font-semibold text-white">{t('dashboard.referral.title')}</h3>
           <div className="bg-gray-700 p-4 rounded-lg">
             <p className="text-sm text-gray-400">{t('dashboard.referral.subtitle')}</p>
@@ -254,7 +235,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             <div className="border-t border-gray-600 pt-4">
                 <button 
                     onClick={() => setInviteModalOpen(true)}
-                    className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                    className="w-full sm:w-auto bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-lg"
                 >
                     <UserPlusIcon className="w-5 h-5" />
                     <span>{t('dashboard.referral.inviteTitle')}</span>
@@ -265,7 +246,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       </div>
 
       {solanaWalletAddress && (
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+          <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700/50">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-white">{t('dashboard.cards.myCryptoWallet')}</h3>
                 <button onClick={fetchAllBalances} className="text-gray-400 hover:text-white" title={t('wallet.solana.refresh')}>
@@ -302,28 +283,28 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         </div>
         <button 
           onClick={() => setView(View.PROJECTS)}
-          className="bg-white text-brand-primary font-bold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0 flex items-center space-x-2"
+          className="bg-white text-brand-primary font-bold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0 flex items-center space-x-2 shadow-md"
         >
           <PlusCircleIcon className="w-6 h-6" />
           <span>{t('dashboard.investBanner.button')}</span>
         </button>
       </div>
 
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg border border-gray-700/50">
         <h3 className="text-lg font-semibold text-white mb-4">{t('dashboard.charts.incomeOverview')}</h3>
         <div className="h-64">
           <IncomeChart data={incomeChartData} />
         </div>
       </div>
       
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg border border-gray-700/50">
         <h3 className="text-lg font-semibold text-white mb-4">{t('dashboard.myInvestments.title')}</h3>
          {userInvestments.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {userInvestments.map(inv => (
-                    <div key={inv.id} className="bg-gray-700 p-4 rounded-lg">
+                    <div key={inv.id} className="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition-colors">
                         <div className="flex justify-between items-center mb-3">
-                            <h4 className="font-bold text-white">{inv.name}</h4>
+                            <h4 className="font-bold text-white truncate max-w-[70%]">{inv.name}</h4>
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${inv.status === 'Active' ? 'bg-green-900 text-green-300' : 'bg-gray-600 text-gray-300'}`}>
                                 {inv.status}
                             </span>
@@ -354,11 +335,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                 ))}
             </div>
          ) : (
-            <div className="text-center py-8">
-                <p className="text-gray-400">{t('dashboard.myInvestments.noInvestments')}</p>
+            <div className="text-center py-10 bg-gray-700/30 rounded-lg border border-dashed border-gray-600">
+                <p className="text-gray-400 mb-4">{t('dashboard.myInvestments.noInvestments')}</p>
                 <button 
                     onClick={() => setView(View.PROJECTS)}
-                    className="mt-4 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition-opacity text-sm"
+                    className="bg-brand-primary text-white font-bold py-2 px-6 rounded-lg hover:opacity-90 transition-opacity text-sm shadow-lg"
                 >
                     {t('dashboard.myInvestments.makeFirstInvestment')}
                 </button>
@@ -366,12 +347,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
          )}
       </div>
 
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg border border-gray-700/50">
         <h3 className="text-lg font-semibold text-white mb-4">{t('dashboard.directReferrals.title')}</h3>
         {directReferrals.length > 0 ? (
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-gray-300">
-                    <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                    <thead className="text-xs text-gray-400 uppercase bg-gray-700/50">
                         <tr>
                             <th className="px-4 py-3">{t('dashboard.directReferrals.user')}</th>
                             <th className="px-4 py-3">{t('dashboard.directReferrals.joinDate')}</th>
@@ -382,9 +363,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                     </thead>
                     <tbody>
                         {directReferrals.map(ref => (
-                            <tr key={ref.id} className="border-b border-gray-700 hover:bg-gray-700/50">
+                            <tr key={ref.id} className="border-b border-gray-700 hover:bg-gray-700/30 transition-colors">
                                 <td className="px-4 py-3 flex items-center gap-2">
-                                    <img src={ref.avatar} alt="" className="w-6 h-6 rounded-full" />
+                                    <img src={ref.avatar} alt="" className="w-8 h-8 rounded-full" />
                                     <span className="font-medium text-white">{ref.name}</span>
                                 </td>
                                 <td className="px-4 py-3">{ref.joinDate}</td>
@@ -401,7 +382,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
                 </table>
             </div>
         ) : (
-            <p className="text-gray-400 text-center py-4">{t('dashboard.directReferrals.noReferrals')}</p>
+            <div className="text-center py-10 bg-gray-700/30 rounded-lg flex flex-col items-center justify-center border border-dashed border-gray-600">
+                <div className="bg-gray-800 p-4 rounded-full mb-3">
+                    <UsersIcon className="w-8 h-8 text-gray-500" />
+                </div>
+                <p className="text-gray-400 mb-4">{t('dashboard.directReferrals.noReferrals')}</p>
+                <button 
+                    onClick={() => setInviteModalOpen(true)}
+                    className="text-brand-primary hover:text-brand-secondary font-medium text-sm underline"
+                >
+                    {t('dashboard.referral.inviteTitle')}
+                </button>
+            </div>
         )}
       </div>
       

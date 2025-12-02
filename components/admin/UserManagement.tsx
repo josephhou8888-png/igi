@@ -13,6 +13,8 @@ import AddInvestmentModal from './AddInvestmentModal';
 import InvestFromBalanceModal from './InvestFromBalanceModal';
 import { UserPlusIcon } from '../../constants';
 
+const ITEMS_PER_PAGE = 10;
+
 const UserRow: React.FC<{
     user: User; 
     toggleFreezeUser: (id: string) => void;
@@ -97,16 +99,25 @@ const UserManagement: React.FC = () => {
     const [addingInvestmentUser, setAddingInvestmentUser] = useState<User | null>(null);
     const [investingBalanceUser, setInvestingBalanceUser] = useState<User | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const filteredUsers = useMemo(() => {
-        if (!searchTerm) {
-            return users;
+        let filtered = users;
+        if (searchTerm) {
+            filtered = users.filter(u =>
+                (u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
         }
-        return users.filter(u =>
-            (u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
+        return filtered;
     }, [users, searchTerm]);
+
+    const paginatedUsers = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [filteredUsers, currentPage]);
+
+    const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
     
     const kycStatusMap: { [key in User['kycStatus']]: string } = {
         'Verified': t('kyc.verified'),
@@ -155,8 +166,8 @@ const UserManagement: React.FC = () => {
                         type="text"
                         placeholder={t('admin.users.searchPlaceholder')}
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-gray-700 text-white rounded-md px-4 py-2 text-sm w-full sm:w-64"
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                        className="bg-gray-700 text-white rounded-md px-4 py-2 text-sm w-full sm:w-64 focus:ring-2 focus:ring-brand-primary outline-none"
                     />
                     <div className="flex items-center space-x-4">
                          <button
@@ -188,7 +199,7 @@ const UserManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredUsers.map((user: User) => (
+                            {paginatedUsers.map((user: User) => (
                                 <UserRow 
                                     key={user.id}
                                     user={user}
@@ -206,9 +217,41 @@ const UserManagement: React.FC = () => {
                                     getUserBalances={getUserBalances}
                                 />
                             ))}
+                            {paginatedUsers.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                                        No users found.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
+                        <div className="text-sm text-gray-400">
+                            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+                        </div>
+                        <div className="flex space-x-2">
+                            <button 
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Previous
+                            </button>
+                            <button 
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
             {isCreateModalOpen && <CreateUserModal onClose={() => setIsCreateModalOpen(false)} />}
             {editingUser && <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} />}
