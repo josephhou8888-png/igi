@@ -1235,19 +1235,20 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const sendReferralInvite = useCallback(async (email: string) => {
     if (!currentUser) return;
 
+    // Prepare Fallback content
+    const subject = t('dashboard.referral.emailSubject');
+    const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
     // Check constraints: Mock users (non-UUID) in Demo Mode cannot use server functions
     const isMockUser = !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentUser.id);
     
     if (!supabase || isMockUser) {
-        console.warn("Skipping Supabase Edge Function call: App is in Demo Mode or User ID is not a UUID.");
-        // Fallback directly for demo/mock to avoid server errors on invalid IDs
-        const subject = t('dashboard.referral.emailSubject');
-        const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
-        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        console.warn("Skipping Supabase Edge Function: Demo Mode or Mock User.");
+        window.location.href = mailtoLink;
         return;
     }
 
-    // Attempt Server-Side Send via Edge Function
     try {
         const { error, data } = await supabase.functions.invoke('send-referral-invite', {
             body: {
@@ -1260,22 +1261,19 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         });
         
         if (error) {
-            throw new Error(error.message || "Unknown Edge Function Error");
+            throw error;
         }
         
-        // If the function returns an error in the body (e.g. 400 Bad Request)
         if (data && data.error) {
              throw new Error(data.error);
         }
 
+        console.log("Email sent via Supabase Edge Function");
+
     } catch (e: any) {
-        console.error('Email Edge Function Failed:', e);
-        
-        // Explicit fallback on server failure so the user isn't stuck
-        alert(`Server email failed: ${e.message}. Opening default mail client.`);
-        const subject = t('dashboard.referral.emailSubject');
-        const body = t('dashboard.referral.emailBody', { referralLink: `${window.location.origin}?ref=${currentUser.referralCode}` });
-        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        console.error('Edge Function Failed (Fallback to Mailto):', e.message);
+        // Seamless fallback: Open default mail client without scaring the user with an alert
+        window.location.href = mailtoLink;
     }
   }, [currentUser, t]);
 

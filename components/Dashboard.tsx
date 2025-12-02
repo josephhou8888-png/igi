@@ -11,7 +11,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
-  const { currentUser, bonuses, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite } = useAppContext();
+  const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite } = useAppContext();
   const { t } = useLocalization();
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
@@ -23,26 +23,44 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       if (!currentUser) return { incomeToday: 0, incomeThisMonth: 0, lifetimeEarnings: 0 };
       
       const todayStr = currentDate.toISOString().split('T')[0];
-      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const currentMonthPrefix = todayStr.substring(0, 7); // YYYY-MM
 
       let today = 0;
       let thisMonth = 0;
       let lifetime = 0;
 
-      bonuses.forEach(b => {
-          if (b.userId !== currentUser.id) return;
-          lifetime += b.amount;
-          const bonusDate = new Date(b.date);
-          if (bonusDate >= startOfMonth) {
-              thisMonth += b.amount;
-          }
-          if (b.date === todayStr) {
-              today += b.amount;
+      // Income is calculated from transactions to include all types (Bonus, Manual Bonus, Profit Share, etc.)
+      transactions.forEach(t => {
+          if (t.userId !== currentUser.id) return;
+          if (t.status === 'rejected') return;
+
+          const isIncome = 
+            t.type === 'Bonus' || 
+            t.type === 'Manual Bonus' || 
+            t.type === 'Profit Share' ||
+            t.type === 'Instant' ||
+            t.type === 'Team Builder' ||
+            t.type === 'Leadership' ||
+            t.type === 'Asset Growth';
+
+          if (isIncome) {
+              lifetime += t.amount;
+              
+              // Normalize date to YYYY-MM-DD
+              const tDateStr = t.date.length >= 10 ? t.date.substring(0, 10) : t.date;
+              
+              if (tDateStr.startsWith(currentMonthPrefix)) {
+                  thisMonth += t.amount;
+              }
+              
+              if (tDateStr === todayStr) {
+                  today += t.amount;
+              }
           }
       });
 
       return { incomeToday: today, incomeThisMonth: thisMonth, lifetimeEarnings: lifetime };
-  }, [bonuses, currentUser, currentDate]);
+  }, [transactions, currentUser, currentDate]);
 
   const { depositBalance } = useMemo(() => {
     if (!currentUser) return { depositBalance: 0 };
@@ -91,6 +109,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
       if (!currentUser) return [];
       const monthlyData: { [key: string]: number } = {};
       
+      // Use bonuses array for chart as it's specifically for earnings history
       bonuses
           .filter(b => b.userId === currentUser.id)
           .forEach(b => {
