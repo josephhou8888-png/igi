@@ -62,6 +62,19 @@ export interface Project {
   assetCustodian: string;
   assetManager: string;
   oracles: string;
+
+  // Custom Configuration
+  customBonusConfig?: BonusConfig;
+  customRankConfig?: Rank[];
+}
+
+export interface BonusConfig {
+    instant: {
+        investor: number;
+        referrer: number;
+        upline: number;
+    };
+    teamBuilder: number[]; // Array of percentages for levels 1-9
 }
 
 export interface InvestmentPool {
@@ -70,6 +83,11 @@ export interface InvestmentPool {
   description: string;
   apy: number; // Annual Percentage Yield
   minInvestment: number;
+  projectUrl?: string; // Optional URL for the fund project
+  linkedProjectId?: string; // Optional link to a specific Project
+  // New fields for specific fund configuration
+  customBonusConfig?: BonusConfig;
+  customRankConfig?: Rank[];
 }
 
 
@@ -170,6 +188,12 @@ export interface PlatformSocialLinks {
   discord: string;
 }
 
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+  duration?: number;
+}
 
 export enum View {
   DASHBOARD = 'dashboard',

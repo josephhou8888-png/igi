@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
-import { DollarSignIcon, PercentIcon } from '../constants';
+import { DollarSignIcon, PercentIcon, ExternalLinkIcon } from '../constants';
 import ReinvestModal from './ReinvestModal';
 
 const LegacyFunds: React.FC = () => {
@@ -34,6 +34,18 @@ const LegacyFunds: React.FC = () => {
                 <div className="p-6 flex flex-col flex-grow">
                     <h3 className="text-xl font-bold text-white">{pool.name}</h3>
                     <p className="text-sm text-gray-400 mt-2">{pool.description}</p>
+                    
+                    {pool.projectUrl && (
+                        <a 
+                            href={pool.projectUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex items-center text-brand-primary hover:text-brand-secondary text-sm mt-3 font-medium transition-colors"
+                        >
+                            Visit Website <ExternalLinkIcon className="w-4 h-4 ml-1" />
+                        </a>
+                    )}
+
                     <div className="mt-6 space-y-3 flex-grow">
                         <div className="flex items-center">
                             <PercentIcon className="w-5 h-5 text-green-400 mr-3" />

@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
+import { useToast } from '../hooks/useToast'; // Import useToast
 import IncomeChart from './charts/IncomeChart';
 import { DollarSignIcon, TrophyIcon, TrendingUpIcon, PercentIcon, PlusCircleIcon, TokenIcon, SolanaIcon, CopyIcon, ShareIcon, MailIcon, WalletIcon, CheckCircleIcon, CalendarIcon } from '../constants';
 import { View } from '../types';
@@ -13,6 +14,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const { currentUser, bonuses, transactions, currentDate, investments, projects, investmentPools, solanaWalletAddress, igiTokenBalance, solBalance, fetchAllBalances, getUserBalances, sendReferralInvite } = useAppContext();
   const { t } = useLocalization();
+  const { addToast } = useToast(); // Initialize toast hook
   const [inviteEmail, setInviteEmail] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -133,7 +135,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   
   const copyToClipboard = () => {
     navigator.clipboard.writeText(currentUser.referralCode);
-    alert(t('dashboard.referral.copied'));
+    addToast(t('dashboard.referral.copied'), 'success'); // Use toast
   };
 
   const handleShare = async () => {
@@ -148,7 +150,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         console.error('Error sharing referral code:', error);
       }
     } else {
-      alert(t('dashboard.share.notSupported'));
+      addToast(t('dashboard.share.notSupported'), 'info'); // Use toast
     }
   };
 
@@ -163,8 +165,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
         setInviteEmail('');
         setInviteSuccess(true);
         setTimeout(() => setInviteSuccess(false), 3000);
+        addToast(t('dashboard.referral.inviteSentAction'), 'success'); // Toast on successful invite
     } catch (error) {
-        // Error handling if needed, though AppContext handles alerts
+        // AppContext handles specific error alerts/fallbacks, but we can catch here if needed
     } finally {
         setIsInviting(false);
     }

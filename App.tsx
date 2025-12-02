@@ -1,22 +1,32 @@
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { AppContextProvider } from './context/AppContext';
+import { ToastProvider } from './context/ToastContext';
 import { useAppContext } from './hooks/useAppContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
-import AdminDashboard from './components/admin/AdminDashboard';
-import Wallet from './components/Wallet';
 import Login from './components/Login';
-import Leaderboard from './components/Leaderboard';
-import Profile from './components/Profile';
-import Resources from './components/Resources';
-import UserManual from './components/UserManual';
-import Projects from './components/Projects';
-import ProjectDetail from './components/ProjectDetail';
-import Network from './components/Network';
-import LegacyFunds from './components/LegacyFunds';
+import ToastContainer from './components/ui/ToastContainer';
 import { View } from './types';
+
+// Lazy Load heavy components to improve initial render time
+const AdminDashboard = React.lazy(() => import('./components/admin/AdminDashboard'));
+const Wallet = React.lazy(() => import('./components/Wallet'));
+const Leaderboard = React.lazy(() => import('./components/Leaderboard'));
+const Profile = React.lazy(() => import('./components/Profile'));
+const Resources = React.lazy(() => import('./components/Resources'));
+const UserManual = React.lazy(() => import('./components/UserManual'));
+const Projects = React.lazy(() => import('./components/Projects'));
+const ProjectDetail = React.lazy(() => import('./components/ProjectDetail'));
+const Network = React.lazy(() => import('./components/Network'));
+const LegacyFunds = React.lazy(() => import('./components/LegacyFunds'));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+  </div>
+);
 
 const AppContent: React.FC = () => {
   const { currentUser } = useAppContext();
@@ -32,37 +42,55 @@ const AppContent: React.FC = () => {
 
   const renderContent = () => {
     if (isAdminView) {
-      return <AdminDashboard />;
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <AdminDashboard />
+        </Suspense>
+      );
     }
     switch (currentView) {
       case View.DASHBOARD:
+        // Dashboard is critical, we can keep it eager or lazy. 
+        // Since it's default, eager loading the imports above is fine, 
+        // but if we move it to lazy, we need to handle it.
+        // For now, let's keep Dashboard eager (imported at top) for immediate LCP.
         return <Dashboard setView={navigateToProjects} />;
       case View.PROJECTS:
-        if (selectedProjectId) {
-          return <ProjectDetail projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />;
-        }
-        return <Projects onSelectProject={setSelectedProjectId} />;
+        return (
+          <Suspense fallback={<LoadingFallback />}>
+            {selectedProjectId ? (
+              <ProjectDetail projectId={selectedProjectId} onBack={() => setSelectedProjectId(null)} />
+            ) : (
+              <Projects onSelectProject={setSelectedProjectId} />
+            )}
+          </Suspense>
+        );
       case View.FUNDS:
-        return <LegacyFunds />;
+        return <Suspense fallback={<LoadingFallback />}><LegacyFunds /></Suspense>;
       case View.WALLET:
-        return <Wallet />;
+        return <Suspense fallback={<LoadingFallback />}><Wallet /></Suspense>;
       case View.NETWORK:
-        return <Network />;
+        return <Suspense fallback={<LoadingFallback />}><Network /></Suspense>;
       case View.LEADERBOARD:
-        return <Leaderboard />;
+        return <Suspense fallback={<LoadingFallback />}><Leaderboard /></Suspense>;
       case View.PROFILE:
-        return <Profile />;
+        return <Suspense fallback={<LoadingFallback />}><Profile /></Suspense>;
       case View.RESOURCES:
-        return <Resources />;
+        return <Suspense fallback={<LoadingFallback />}><Resources /></Suspense>;
       case View.USER_MANUAL:
-        return <UserManual />;
+        return <Suspense fallback={<LoadingFallback />}><UserManual /></Suspense>;
       default:
         return <Dashboard setView={navigateToProjects} />;
     }
   };
 
   if (!currentUser) {
-    return <Login />;
+    return (
+        <>
+            <Login />
+            <ToastContainer />
+        </>
+    );
   }
 
   return (
@@ -87,15 +115,18 @@ const AppContent: React.FC = () => {
           {renderContent()}
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 };
 
 const App: React.FC = () => {
   return (
-    <AppContextProvider>
-      <AppContent />
-    </AppContextProvider>
+    <ToastProvider>
+      <AppContextProvider>
+        <AppContent />
+      </AppContextProvider>
+    </ToastProvider>
   );
 };
 

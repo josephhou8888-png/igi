@@ -257,12 +257,18 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           rightsConferred: 'Equity',
           assetCustodian: 'Custody Co',
           assetManager: 'Manager Co',
-          oracles: 'Chainlink'
+          oracles: 'Chainlink',
+          customBonusConfig: p.custom_bonus_config,
+          customRankConfig: p.custom_rank_config
       })));
 
       if (poolData) setInvestmentPools(poolData.map(p => ({
           ...p,
-          minInvestment: Number(p.min_investment)
+          minInvestment: Number(p.min_investment),
+          customBonusConfig: p.custom_bonus_config,
+          customRankConfig: p.custom_rank_config,
+          projectUrl: p.project_url,
+          linkedProjectId: p.linked_project_id
       })));
 
       if (newsData) setNews(newsData);
@@ -529,6 +535,21 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const executeInvestment = useCallback(async (userId: string, amount: number, assetId: string, investmentType: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
     const investingUser = users.find(u => u.id === userId);
     if (!investingUser) return;
+
+    let effectiveBonusRates = instantBonusRates;
+    
+    // Check for custom pool/project bonus rates
+    if (investmentType === 'pool') {
+        const pool = investmentPools.find(p => p.id === assetId);
+        if (pool && pool.customBonusConfig) {
+            effectiveBonusRates = pool.customBonusConfig.instant;
+        }
+    } else if (investmentType === 'project') {
+        const project = projects.find(p => p.id === assetId);
+        if (project && project.customBonusConfig) {
+            effectiveBonusRates = project.customBonusConfig.instant;
+        }
+    }
     
     // Local Demo Logic Update
     if (!supabase) {
@@ -593,19 +614,19 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         investment_id: invData.id,
     });
 
-    // Simplified Bonus Logic for Client Demo
+    // Bonus Logic using effective rates
     await supabase.from('bonuses').insert({
-      user_id: userId, type: 'Instant', source_id: invData.id, amount: amount * instantBonusRates.investor,
+      user_id: userId, type: 'Instant', source_id: invData.id, amount: amount * effectiveBonusRates.investor,
       date: currentDate.toISOString().split('T')[0], read: false,
     });
-    await supabase.from('transactions').insert({ user_id: userId, type: 'Bonus', amount: amount * instantBonusRates.investor, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...BONUS` });
+    await supabase.from('transactions').insert({ user_id: userId, type: 'Bonus', amount: amount * effectiveBonusRates.investor, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...BONUS` });
 
     if (investingUser.uplineId) {
         await supabase.from('bonuses').insert({
-            user_id: investingUser.uplineId, type: 'Instant', source_id: invData.id, amount: amount * instantBonusRates.referrer,
+            user_id: investingUser.uplineId, type: 'Instant', source_id: invData.id, amount: amount * effectiveBonusRates.referrer,
             date: currentDate.toISOString().split('T')[0], read: false,
         });
-        await supabase.from('transactions').insert({ user_id: investingUser.uplineId, type: 'Bonus', amount: amount * instantBonusRates.referrer, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...REF` });
+        await supabase.from('transactions').insert({ user_id: investingUser.uplineId, type: 'Bonus', amount: amount * effectiveBonusRates.referrer, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...REF` });
     }
     
     await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
@@ -816,7 +837,13 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_valuation: project.assetValuation,
         expected_yield: project.expectedYield,
         min_investment: project.minInvestment,
-        // ... others
+        token_price: project.tokenPrice,
+        total_token_supply: project.totalTokenSupply,
+        smart_contract_address: project.smartContractAddress,
+        valuation_date: project.valuationDate,
+        custom_bonus_config: project.customBonusConfig,
+        custom_rank_config: project.customRankConfig
+        // ... include other fields as needed based on schema
     });
     await refreshData();
   }, [refreshData]);
@@ -828,7 +855,16 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     }
     await supabase.from('projects').update({
         token_name: project.tokenName,
-        // ... updates for other fields
+        asset_type: project.assetType,
+        asset_valuation: project.assetValuation,
+        expected_yield: project.expectedYield,
+        min_investment: project.minInvestment,
+        token_price: project.tokenPrice,
+        total_token_supply: project.totalTokenSupply,
+        smart_contract_address: project.smartContractAddress,
+        valuation_date: project.valuationDate,
+        custom_bonus_config: project.customBonusConfig,
+        custom_rank_config: project.customRankConfig
     }).eq('id', project.id);
     await refreshData();
   }, [refreshData]);
@@ -851,7 +887,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         name: pool.name,
         description: pool.description,
         apy: pool.apy,
-        min_investment: pool.minInvestment
+        min_investment: pool.minInvestment,
+        custom_bonus_config: pool.customBonusConfig,
+        custom_rank_config: pool.customRankConfig,
+        project_url: pool.projectUrl,
+        linked_project_id: pool.linkedProjectId
     });
     await refreshData();
   }, [refreshData]);
@@ -865,7 +905,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         name: pool.name,
         description: pool.description,
         apy: pool.apy,
-        min_investment: pool.minInvestment
+        min_investment: pool.minInvestment,
+        custom_bonus_config: pool.customBonusConfig,
+        custom_rank_config: pool.customRankConfig,
+        project_url: pool.projectUrl,
+        linked_project_id: pool.linkedProjectId
     }).eq('id', pool.id);
     await refreshData();
   }, [refreshData]);

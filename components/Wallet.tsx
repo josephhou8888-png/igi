@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
+import { useToast } from '../hooks/useToast';
 import WithdrawModal from './WithdrawModal';
 import ReinvestModal from './ReinvestModal';
 import CryptoDepositModal from './CryptoDepositModal';
@@ -15,6 +16,7 @@ const Wallet: React.FC = () => {
     disconnectSolanaWallet, fetchAllBalances
   } = useAppContext();
   const { t } = useLocalization();
+  const { addToast } = useToast();
   const [isCryptoDepositOpen, setIsCryptoDepositOpen] = useState(false);
   const [selectedDepositNetwork, setSelectedDepositNetwork] = useState<keyof TreasuryWallets>('erc20');
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -38,6 +40,14 @@ const Wallet: React.FC = () => {
       setSelectedDepositNetwork(network);
       setIsCryptoDepositOpen(true);
   };
+
+  const handleConnectWallet = async () => {
+      try {
+          await connectSolanaWallet();
+      } catch (e) {
+          addToast(t('wallet.solana.notFound'), 'error');
+      }
+  }
 
   const getTransactionColor = (type: string) => {
     switch(type) {
@@ -196,7 +206,7 @@ const Wallet: React.FC = () => {
             <h3 className="text-lg font-semibold text-white mb-4">{t('wallet.solana.title')}</h3>
             {!solanaWalletAddress ? (
                 <button 
-                    onClick={connectSolanaWallet} 
+                    onClick={handleConnectWallet} 
                     className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-lg"
                 >
                     {t('wallet.solana.connect')}

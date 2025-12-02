@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
+import { useToast } from '../hooks/useToast';
 import { User } from '../types';
 import AchievementBadge from './AchievementBadge';
 import { CameraIcon, CopyIcon, ShareIcon } from '../constants';
@@ -9,6 +10,7 @@ import { CameraIcon, CopyIcon, ShareIcon } from '../constants';
 const Profile: React.FC = () => {
   const { currentUser, updateUser } = useAppContext();
   const { t } = useLocalization();
+  const { addToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +43,7 @@ const Profile: React.FC = () => {
       
       // File size check (limit to 1MB to avoid performance issues/database limits with base64)
       if (file.size > 1024 * 1024) {
-          alert("Image size is too large. Please upload an image smaller than 1MB.");
+          addToast("Image size is too large. Please upload an image smaller than 1MB.", 'error');
           return;
       }
 
@@ -58,12 +60,13 @@ const Profile: React.FC = () => {
     if (!currentUser) return;
     updateUser({ ...currentUser, ...formData });
     setIsEditing(false);
+    addToast("Profile updated successfully!", 'success');
   };
 
   const copyToClipboard = () => {
     if (!currentUser) return;
     navigator.clipboard.writeText(currentUser.referralCode);
-    alert(t('dashboard.referral.copied'));
+    addToast(t('dashboard.referral.copied'), 'success');
   };
 
   const handleShare = async () => {
@@ -79,7 +82,7 @@ const Profile: React.FC = () => {
         console.error('Error sharing referral code:', error);
       }
     } else {
-      alert(t('dashboard.share.notSupported'));
+      addToast(t('dashboard.share.notSupported'), 'info');
     }
   };
 
@@ -208,7 +211,7 @@ const Profile: React.FC = () => {
             <form onSubmit={(e) => {
                 e.preventDefault();
                 updateUser({ ...currentUser, kycStatus: 'Pending' });
-                alert(t('profile.kyc.submittedAlert'));
+                addToast(t('profile.kyc.submittedAlert'), 'success');
             }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
