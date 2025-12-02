@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
@@ -17,9 +18,27 @@ const Network: React.FC = () => {
 
   const teamPerformanceData = useMemo(() => {
     if (!currentUser) return [];
-    const getDownlineIds = (userId: string, allUsers: User[]): string[] => {
-        const direct = allUsers.filter(u => u.uplineId === userId).map(u => u.id);
-        return [...direct, ...direct.flatMap(id => getDownlineIds(id, allUsers))];
+
+    // Iterative BFS to safely get all downline IDs without stack overflow on cycles
+    const getDownlineIds = (rootId: string, allUsers: User[]): string[] => {
+        const descendants = new Set<string>();
+        const queue = [rootId];
+        const visited = new Set<string>([rootId]); // Track visited to prevent cycles
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            
+            const children = allUsers.filter(u => u.uplineId === currentId);
+            
+            for (const child of children) {
+                if (!visited.has(child.id)) {
+                    visited.add(child.id);
+                    descendants.add(child.id);
+                    queue.push(child.id);
+                }
+            }
+        }
+        return Array.from(descendants);
     };
     
     const downlineIds = new Set(getDownlineIds(currentUser.id, users));
