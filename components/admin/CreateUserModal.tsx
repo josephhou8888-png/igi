@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -27,7 +28,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose }) => {
     uplineId: null as string | null,
     referralCode: '',
     kycStatus: 'Not Submitted' as User['kycStatus'],
-    avatar: 'https://picsum.photos/id/10/200/200',
+    avatar: 'https://ui-avatars.com/api/?name=User&background=random&color=fff',
     country: 'USA',
     isFrozen: false,
     role: 'user' as 'user' | 'admin',
@@ -78,8 +79,12 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose }) => {
       return;
     }
     const referralCode = formData.referralCode || `${formData.name.split(' ')[0].toUpperCase()}${Math.floor(100 + Math.random() * 900)}`;
+    
+    // Generate avatar from name
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=random&color=fff&size=128`;
+
     const finalInvestments = initialInvestments.map(({ id, ...rest }) => rest);
-    createUser({ ...formData, referralCode }, finalInvestments);
+    createUser({ ...formData, referralCode, avatar }, finalInvestments);
     onClose();
   };
 

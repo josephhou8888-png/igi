@@ -465,7 +465,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
               totalDownline: 0,
               monthlyIncome: 0,
               kycStatus: 'Not Submitted',
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=random`,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name || 'User')}&background=random&color=fff&size=128`,
               country: userData.country || 'Global',
               isFrozen: false,
               role: 'user',
