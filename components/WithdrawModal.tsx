@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
@@ -63,18 +64,6 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-      <style>{`
-        /* Chrome, Safari, Edge, Opera */
-        input::-webkit-outer-spin-button,
-        input::-webkit-inner-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        /* Firefox */
-        input[type=number] {
-          -moz-appearance: textfield;
-        }
-      `}</style>
       <div className="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md relative">
         {!isConfirming ? (
           <>

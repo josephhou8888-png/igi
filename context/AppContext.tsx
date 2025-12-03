@@ -127,6 +127,11 @@ const setStoredData = <T,>(key: string, data: T) => {
   }
 };
 
+const sanitizeString = (val: string | null | undefined, fallback: string): string => {
+    if (!val || val === 'null' || val === 'undefined') return fallback;
+    return val;
+};
+
 
 export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children }) => {
   const { t } = useLocalization();
@@ -204,6 +209,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
       if (usersData) setUsers(usersData.map(u => ({
           ...u,
+          name: sanitizeString(u.name, 'User'),
+          country: sanitizeString(u.country, 'Global'),
+          avatar: sanitizeString(u.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(sanitizeString(u.name, 'User'))}&background=random&color=fff`),
           totalInvestment: Number(u.total_investment || 0),
           totalDownline: Number(u.total_downline || 0),
           monthlyIncome: Number(u.monthly_income || 0),
@@ -332,6 +340,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             if(data) setCurrentUser({
                 ...data,
                 id: data.id,
+                name: sanitizeString(data.name, 'User'),
+                country: sanitizeString(data.country, 'Global'),
+                avatar: sanitizeString(data.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(sanitizeString(data.name, 'User'))}&background=random&color=fff`),
                 totalInvestment: Number(data.total_investment),
                 totalDownline: Number(data.total_downline),
                 monthlyIncome: Number(data.monthly_income),
@@ -435,6 +446,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
              }
              setCurrentUser({
                 ...profile,
+                name: sanitizeString(profile.name, 'User'),
+                country: sanitizeString(profile.country, 'Global'),
+                avatar: sanitizeString(profile.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(sanitizeString(profile.name, 'User'))}&background=random&color=fff`),
                 totalInvestment: Number(profile.total_investment),
                 totalDownline: Number(profile.total_downline),
                 monthlyIncome: Number(profile.monthly_income),
