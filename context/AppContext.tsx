@@ -281,7 +281,10 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       })));
 
       if (poolData) setInvestmentPools(poolData.map(p => ({
-          ...p,
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          apy: Number(p.apy),
           minInvestment: Number(p.min_investment),
           customBonusConfig: p.custom_bonus_config,
           customRankConfig: p.custom_rank_config,
@@ -897,7 +900,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_image_url: project.assetImageUrl,
         asset_valuation: project.assetValuation,
         valuation_method: project.valuationMethod,
-        valuation_date: project.valuationDate,
+        valuation_date: project.valuationDate || null, // Handle empty string
         performance_history: project.performanceHistory,
         expected_yield: project.expectedYield,
         proof_of_ownership: project.proofOfOwnership,
@@ -942,7 +945,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_image_url: project.assetImageUrl,
         asset_valuation: project.assetValuation,
         valuation_method: project.valuationMethod,
-        valuation_date: project.valuationDate,
+        valuation_date: project.valuationDate || null, // Handle empty string
         performance_history: project.performanceHistory,
         expected_yield: project.expectedYield,
         proof_of_ownership: project.proofOfOwnership,
@@ -1342,7 +1345,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     setLoading(true);
     try {
-        // Projects
+        // Projects - Full field mapping
         const projectsData = MOCK_PROJECTS.map(p => ({
             token_name: p.tokenName,
             token_ticker: p.tokenTicker,
@@ -1352,12 +1355,26 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             asset_location: p.assetLocation,
             asset_image_url: p.assetImageUrl,
             asset_valuation: p.assetValuation,
+            valuation_method: p.valuationMethod,
+            valuation_date: p.valuationDate,
+            performance_history: p.performanceHistory,
             expected_yield: p.expectedYield,
-            min_investment: p.minInvestment,
-            token_price: p.tokenPrice,
+            proof_of_ownership: p.proofOfOwnership,
+            legal_structure: p.legalStructure,
+            legal_wrapper: p.legalWrapper,
+            jurisdiction: p.jurisdiction,
+            regulatory_status: p.regulatoryStatus,
+            investor_requirements: p.investorRequirements,
             total_token_supply: p.totalTokenSupply,
+            token_price: p.tokenPrice,
+            min_investment: p.minInvestment,
+            blockchain: p.blockchain,
             smart_contract_address: p.smartContractAddress,
-            valuation_date: p.valuationDate
+            distribution: p.distribution,
+            rights_conferred: p.rightsConferred,
+            asset_custodian: p.assetCustodian,
+            asset_manager: p.assetManager,
+            oracles: p.oracles
         }));
         const { error: projError } = await supabase.from('projects').insert(projectsData);
         if (projError) console.error('Error seeding projects:', projError);
@@ -1382,7 +1399,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         const { error: newsError } = await supabase.from('news').insert(newsData);
         if (newsError) console.error('Error seeding news:', newsError);
 
-        alert('Database seeded with Projects, Pools, and News!');
+        alert('Database seeded with complete Projects, Pools, and News!');
         refreshData();
     } catch (e) {
         console.error(e);
