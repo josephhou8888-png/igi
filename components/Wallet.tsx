@@ -119,6 +119,8 @@ const Wallet: React.FC = () => {
     );
   }
 
+  const isKycVerified = currentUser.kycStatus === 'Verified';
+
   return (
     <>
       <div className="space-y-6">
@@ -145,7 +147,20 @@ const Wallet: React.FC = () => {
             </div>
             <div className="flex flex-col space-y-2 sm:flex-row sm:flex-wrap sm:justify-end sm:space-x-4 sm:space-y-0 w-full sm:w-auto [&>button]:flex-shrink-0">
               <button onClick={() => handleOpenDeposit('erc20')} className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-4 rounded-lg shadow-lg">{t('wallet.depositFunds')}</button>
-              <button onClick={() => setIsWithdrawOpen(true)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg">{t('wallet.withdraw')}</button>
+              
+              <button 
+                onClick={() => isKycVerified && setIsWithdrawOpen(true)} 
+                className={`text-white font-bold py-2 px-4 rounded-lg shadow-lg relative group ${isKycVerified ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+                title={!isKycVerified ? t('profile.kyc.notSubmittedMessage') : ''}
+              >
+                {t('wallet.withdraw')}
+                {!isKycVerified && (
+                    <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        KYC Required
+                    </span>
+                )}
+              </button>
+
               <button onClick={() => setIsReinvestOpen(true)} className="bg-brand-secondary hover:bg-brand-secondary/90 text-white font-bold py-2 px-4 rounded-lg shadow-lg">{t('wallet.invest')}</button>
             </div>
           </div>

@@ -74,7 +74,6 @@ const LegacyFunds: React.FC = () => {
             depositBalance={depositBalance} 
             profitBalance={profitBalance}
             initialAssetId={selectedFundId}
-            forcedSource='profit_reinvestment'
         />
       )}
     </div>

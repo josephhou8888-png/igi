@@ -121,7 +121,6 @@ const getStoredData = <T,>(key: string, defaultData: T): T => {
 const setStoredData = <T,>(key: string, data: T) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    // console.log(`Saved ${key} to localStorage`); 
   } catch (error) {
     console.error(`Error saving ${key} to localStorage:`, error);
   }
@@ -196,7 +195,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setLoading(false);
         return;
     }
-    // Don't set loading true here to avoid flickering on realtime updates
     try {
       const { data: usersData } = await supabase.from('profiles').select('*');
       const { data: invData } = await supabase.from('investments').select('*');
@@ -312,7 +310,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         'postgres_changes',
         { event: '*', schema: 'public' },
         (payload) => {
-          console.log('Change received!', payload);
           refreshData();
         }
       )
@@ -379,7 +376,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     refreshData();
 
     return () => subscription.unsubscribe();
-  }, [refreshData]); // Depend on refreshData only, not users, to avoid loop during init
+  }, [refreshData]);
 
   // Sync currentUser with updated users data from global refresh
   useEffect(() => {
@@ -394,8 +391,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             const kycChanged = updatedProfile.kycStatus !== currentUser.kycStatus;
             
             if (roleChanged || frozenChanged || rankChanged || balanceChanged || kycChanged) {
-                // Keep the current user object identity but update fields to trigger re-renders only when needed
-                // Using functional update to access latest state
                 setCurrentUser(prev => prev ? ({ ...prev, ...updatedProfile }) : updatedProfile);
             }
         }
@@ -870,12 +865,20 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [refreshData]);
 
   const deleteInvestment = useCallback(async (investmentId: string) => {
-     if(window.confirm('Are you sure?')) {
+     if(window.confirm('Are you sure? This will refund the investment amount to the user balance. Note: Bonuses paid out are NOT automatically reverted (check Transaction Log).')) {
         if (!supabase) {
             setInvestments(prev => prev.filter(i => i.id !== investmentId));
+            // Also cleanup related bonus transactions for data integrity in demo
+            setBonuses(prev => prev.filter(b => b.sourceId !== investmentId));
+            setTransactions(prev => prev.filter(t => t.investmentId !== investmentId));
             return;
         }
+        
+        // Cascading delete for related bonuses and transactions for cleanup
+        await supabase.from('bonuses').delete().eq('source_id', investmentId);
+        await supabase.from('transactions').delete().eq('investment_id', investmentId);
         await supabase.from('investments').delete().eq('id', investmentId);
+        
         await refreshData();
      }
   }, [refreshData]);
@@ -921,15 +924,21 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     console.log(`Running monthly cycle for ${cycleDate.toLocaleString('default', { month: 'long', year: 'numeric' })}...`);
     
     // RANK PROMOTION LOGIC
-    // 1. Calculate downline counts dynamically
+    // 1. Calculate downline counts dynamically with Cycle Detection
     const downlineCounts: Record<string, number> = {};
-    const calculateDownline = (userId: string): number => {
+    const calculateDownline = (userId: string, visited = new Set<string>()): number => {
+        if (visited.has(userId)) {
+            console.warn(`Cycle detected in downline calculation for user ${userId}. Stopping branch.`);
+            return 0;
+        }
+        visited.add(userId);
+
         if (downlineCounts[userId] !== undefined) return downlineCounts[userId];
         
         const directs = users.filter(u => u.uplineId === userId);
         let count = directs.length;
         for (const direct of directs) {
-            count += calculateDownline(direct.id);
+            count += calculateDownline(direct.id, new Set(visited));
         }
         downlineCounts[userId] = count;
         return count;
@@ -947,18 +956,17 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         let newRank = currentRank;
 
         // Check if eligible for higher rank
-        // Iterate through ranks descending to find highest qualification
         const sortedRanks = [...ranks].sort((a,b) => b.level - a.level);
         
         for (const rankConfig of sortedRanks) {
-            if (rankConfig.level <= currentRank) break; // Already higher or equal
+            if (rankConfig.level <= currentRank) break; 
 
             const hasInvestment = user.totalInvestment >= rankConfig.minTotalInvestment;
             const hasTeam = actualDownlineCount >= rankConfig.minAccounts;
 
             if (hasInvestment && hasTeam) {
                 newRank = rankConfig.level;
-                break; // Found highest eligible rank
+                break;
             }
         }
 
@@ -970,13 +978,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
     if (promotions > 0) {
         if (!supabase) {
-            // Apply promotions locally
             setUsers(prev => prev.map(u => {
                 const promoted = promotedUsers.find(p => p.id === u.id);
                 return promoted || u;
             }));
             
-            // Add notifications
             promotedUsers.forEach(u => {
                 addNotification({
                     userId: u.id,
@@ -987,7 +993,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 });
             });
         } else {
-            // Apply to Supabase
             Promise.all(promotedUsers.map(async (u) => {
                 await supabase.from('profiles').update({ rank: u.rank }).eq('id', u.id);
                 await supabase.from('notifications').insert({
@@ -1011,13 +1016,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setCurrentDate(newDate);
 
     // 2. Generate Profit for active investments if in Demo Mode (Client Side Simulation)
-    // Note: In production (Supabase), this should be a scheduled Edge Function or pg_cron job.
     if (!supabase || window.confirm('Generate simulated profit transactions for skipped days?')) {
         console.log(`Advancing date by ${days} days... Generating profits.`);
         
         let profitTransactions: any[] = [];
         
-        // Loop through each day skipped to generate accurate daily records
         for (let i = 1; i <= days; i++) {
             const simulationDate = new Date(currentDate);
             simulationDate.setDate(simulationDate.getDate() + i);
@@ -1026,7 +1029,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             investments.forEach(inv => {
                 if (inv.status !== 'Active') return;
 
-                // Use snapshotted APY if available, otherwise fallback to project/pool current APY
                 let apy = inv.apy || 0;
                 
                 if (apy === 0) {
@@ -1055,7 +1057,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
         if (profitTransactions.length > 0) {
             if (!supabase) {
-                // Local State Update
                 const newTxns = profitTransactions.map((pt, idx) => ({
                     id: `tx-profit-${Date.now()}-${idx}`,
                     userId: pt.userId,
@@ -1066,7 +1067,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                     investmentId: pt.investmentId
                 }));
                 
-                // Update Investments total profit
                 const updatedInvestments = [...investments];
                 profitTransactions.forEach(pt => {
                     const inv = updatedInvestments.find(i => i.id === pt.investmentId);
@@ -1075,10 +1075,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
                 setTransactions(prev => [...prev, ...newTxns]);
                 setInvestments(updatedInvestments);
-                // Users total balance isn't explicitly stored, derived from txns
             } else {
-                // Supabase Update
-                // Note: Batch inserts for speed
                 const txInserts = profitTransactions.map(pt => ({
                     user_id: pt.userId,
                     type: 'Profit Share',
@@ -1089,8 +1086,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 }));
                 
                 await supabase.from('transactions').insert(txInserts);
-                
-                // For now, just refresh to show new transactions
                 await refreshData();
             }
         }
@@ -1112,7 +1107,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_image_url: project.assetImageUrl,
         asset_valuation: project.assetValuation,
         valuation_method: project.valuationMethod,
-        valuation_date: project.valuationDate || null, // Handle empty string
+        valuation_date: project.valuationDate || null, 
         performance_history: project.performanceHistory,
         expected_yield: project.expectedYield,
         proof_of_ownership: project.proofOfOwnership,
@@ -1131,7 +1126,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_custodian: project.assetCustodian,
         asset_manager: project.assetManager,
         oracles: project.oracles,
-        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
     });
     if (error) {
         console.error('Error creating project:', error);
@@ -1156,7 +1150,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_image_url: project.assetImageUrl,
         asset_valuation: project.assetValuation,
         valuation_method: project.valuationMethod,
-        valuation_date: project.valuationDate || null, // Handle empty string
+        valuation_date: project.valuationDate || null, 
         performance_history: project.performanceHistory,
         expected_yield: project.expectedYield,
         proof_of_ownership: project.proofOfOwnership,
@@ -1175,7 +1169,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_custodian: project.assetCustodian,
         asset_manager: project.assetManager,
         oracles: project.oracles,
-        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
     }).eq('id', project.id);
     
     if (error) {
@@ -1205,7 +1198,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
         project_url: pool.projectUrl || null,
         linked_project_id: pool.linkedProjectId || null
     });
@@ -1228,7 +1220,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
         project_url: pool.projectUrl || null,
         linked_project_id: pool.linkedProjectId || null
     }).eq('id', pool.id);
@@ -1440,7 +1431,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         
         // Handle initial investments in demo mode
         for (const inv of initialInvestments) {
-             // Mock execute investment without modifying wallet balance (admin creation)
              const newInvId = `inv-${Date.now()}-${Math.random()}`;
              setInvestments(prev => [...prev, {
                  id: newInvId,
@@ -1456,17 +1446,27 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                  source: 'deposit',
                  apy: inv.type === 'project' ? projects.find(p => p.id === inv.assetId)?.expectedYield : investmentPools.find(p => p.id === inv.assetId)?.apy
              }]);
-             // Add transaction for record
+             // Add "Investment" transaction
              setTransactions(prev => [...prev, {
                  id: `tx-init-${Date.now()}-${Math.random()}`,
                  userId: newUser.id,
                  type: 'Investment',
                  amount: inv.amount,
-                 txHash: 'ADMIN-INIT',
+                 txHash: 'ADMIN-INIT-INV',
                  date: currentDate.toISOString().split('T')[0],
                  investmentId: newInvId
              }]);
-             // Update user total investment
+             // Add corresponding "Deposit" transaction so balance stays 0 instead of negative
+             setTransactions(prev => [...prev, {
+                 id: `tx-init-dep-${Date.now()}-${Math.random()}`,
+                 userId: newUser.id,
+                 type: 'Deposit',
+                 amount: inv.amount,
+                 txHash: 'ADMIN-INIT-DEP',
+                 date: currentDate.toISOString().split('T')[0],
+                 status: 'completed'
+             }]);
+
              newUser.totalInvestment += inv.amount;
         }
         
@@ -1489,9 +1489,33 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     await executeInvestment(userId, amount, assetId, type, source);
   }, [executeInvestment]);
 
+  // Rename to clarify intent: This simulates a deposit AND then an investment
   const confirmCryptoInvestment = useCallback(async (userId: string, amount: number, assetId: string, type: 'project' | 'pool') => {
+    // 1. Create a completed Deposit transaction to credit the user
+    if (!supabase) {
+        setTransactions(prev => [...prev, {
+            id: `tx-adm-dep-${Date.now()}`,
+            userId,
+            type: 'Deposit',
+            amount,
+            txHash: 'ADMIN-ADD',
+            date: currentDate.toISOString().split('T')[0],
+            status: 'completed'
+        }]);
+    } else {
+        await supabase.from('transactions').insert({
+            user_id: userId,
+            type: 'Deposit',
+            amount,
+            tx_hash: `ADMIN-ADD-${Date.now()}`,
+            date: currentDate.toISOString().split('T')[0],
+            status: 'completed'
+        });
+    }
+    
+    // 2. Execute the investment (which deducts the funds we just deposited)
     await executeInvestment(userId, amount, assetId, type, 'deposit');
-  }, [executeInvestment]);
+  }, [executeInvestment, currentDate]);
 
   const updateInvestment = useCallback(async (investment: Investment) => {
     if (!supabase) {
