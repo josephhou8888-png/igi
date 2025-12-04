@@ -595,25 +595,48 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     const investingUser = users.find(u => u.id === userId);
     if (!investingUser) return;
 
-    let effectiveBonusRates = instantBonusRates;
+    let effectiveInstantRates = instantBonusRates;
+    let effectiveTeamRates = teamBuilderBonusRates;
     
-    // Check for custom pool/project bonus rates
+    // Check for custom pool/project bonus rates - SPECIFIC OVERRIDES GLOBAL
     if (investmentType === 'pool') {
         const pool = investmentPools.find(p => p.id === assetId);
         if (pool && pool.customBonusConfig) {
-            effectiveBonusRates = pool.customBonusConfig.instant;
+            effectiveInstantRates = pool.customBonusConfig.instant;
+            effectiveTeamRates = pool.customBonusConfig.teamBuilder;
         }
     } else if (investmentType === 'project') {
         const project = projects.find(p => p.id === assetId);
         if (project && project.customBonusConfig) {
-            effectiveBonusRates = project.customBonusConfig.instant;
+            effectiveInstantRates = project.customBonusConfig.instant;
+            effectiveTeamRates = project.customBonusConfig.teamBuilder;
         }
     }
     
-    // Local Demo Logic Update
+    const investmentId = `inv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    
+    // Helper to add bonuses
+    const addBonus = async (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
+        if (bonusAmount <= 0) return;
+        
+        if (!supabase) {
+            setBonuses(prev => [...prev, { id: `bns-${Date.now()}-${Math.random()}`, userId: recipientId, type, sourceId, amount: bonusAmount, date: currentDate.toISOString().split('T')[0], read: false }]);
+            setTransactions(prev => [...prev, { id: `tx-bns-${Date.now()}-${Math.random()}`, userId: recipientId, type: 'Bonus', amount: bonusAmount, txHash: `BONUS-${type.toUpperCase()}`, date: currentDate.toISOString().split('T')[0] }]);
+        } else {
+            await supabase.from('bonuses').insert({
+                user_id: recipientId, type, source_id: sourceId, amount: bonusAmount,
+                date: currentDate.toISOString().split('T')[0], read: false,
+            });
+            await supabase.from('transactions').insert({ 
+                user_id: recipientId, type: 'Bonus', amount: bonusAmount, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...${type}` 
+            });
+        }
+    };
+
+    // 1. Create Investment & Transaction
     if (!supabase) {
         const newInvestment: Investment = {
-            id: `inv-${Date.now()}`,
+            id: investmentId,
             userId, amount, date: currentDate.toISOString().split('T')[0],
             status: 'Active',
             projectId: investmentType === 'project' ? assetId : undefined,
@@ -623,75 +646,75 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             totalProfitEarned: 0, source
         };
         setInvestments(prev => [...prev, newInvestment]);
-        
-        const newTx: Transaction = {
+        setTransactions(prev => [...prev, {
             id: `tx-${Date.now()}`, userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
             amount, txHash: 'DEMO-HASH', date: currentDate.toISOString().split('T')[0], investmentId: newInvestment.id
-        };
-        setTransactions(prev => [...prev, newTx]);
+        }]);
         
-        // Update user
-        const updatedUsers = users.map(u => u.id === userId ? { ...u, totalInvestment: u.totalInvestment + amount } : u);
-        setUsers(updatedUsers);
+        // Update user total investment
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: u.totalInvestment + amount } : u));
         if (currentUser?.id === userId) setCurrentUser(prev => prev ? { ...prev, totalInvestment: prev.totalInvestment + amount } : null);
-        return;
-    }
+    } else {
+        let projectId = null;
+        let poolId = null;
+        if (investmentType === 'project') {
+            projectId = projects.find(p => p.id === assetId)?.id;
+        } else {
+            poolId = investmentPools.find(p => p.id === assetId)?.id;
+        }
+        
+        const { data: invData, error: invError } = await supabase.from('investments').insert({
+            user_id: userId, amount, date: currentDate.toISOString().split('T')[0],
+            status: 'Active', project_id: projectId, pool_id: poolId,
+            total_profit_earned: 0, source: source,
+        }).select().single();
 
-    // Supabase Logic
-    let projectId = null;
-    let poolId = null;
-
-    if (investmentType === 'project') {
-      const project = projects.find(p => p.id === assetId);
-      if (!project) return;
-      projectId = project.id;
-    } else { // 'pool'
-      const pool = investmentPools.find(p => p.id === assetId);
-      if (!pool) return;
-      poolId = pool.id;
-    }
-    
-    const { data: invData, error: invError } = await supabase.from('investments').insert({
-      user_id: userId,
-      amount,
-      date: currentDate.toISOString().split('T')[0],
-      status: 'Active',
-      project_id: projectId,
-      pool_id: poolId,
-      total_profit_earned: 0,
-      source: source,
-    }).select().single();
-
-    if (invError || !invData) { console.error(invError); return; }
-    
-    await supabase.from('transactions').insert({
-        user_id: userId,
-        type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
-        amount,
-        tx_hash: `0x...${Date.now().toString().slice(-4)}`,
-        date: currentDate.toISOString().split('T')[0],
-        investment_id: invData.id,
-    });
-
-    // Bonus Logic using effective rates
-    await supabase.from('bonuses').insert({
-      user_id: userId, type: 'Instant', source_id: invData.id, amount: amount * effectiveBonusRates.investor,
-      date: currentDate.toISOString().split('T')[0], read: false,
-    });
-    await supabase.from('transactions').insert({ user_id: userId, type: 'Bonus', amount: amount * effectiveBonusRates.investor, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...BONUS` });
-
-    if (investingUser.uplineId) {
-        await supabase.from('bonuses').insert({
-            user_id: investingUser.uplineId, type: 'Instant', source_id: invData.id, amount: amount * effectiveBonusRates.referrer,
-            date: currentDate.toISOString().split('T')[0], read: false,
+        if (invError || !invData) { console.error(invError); return; }
+        
+        await supabase.from('transactions').insert({
+            user_id: userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
+            amount, tx_hash: `0x...${Date.now().toString().slice(-4)}`, date: currentDate.toISOString().split('T')[0],
+            investment_id: invData.id,
         });
-        await supabase.from('transactions').insert({ user_id: investingUser.uplineId, type: 'Bonus', amount: amount * effectiveBonusRates.referrer, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...REF` });
+        
+        await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
     }
-    
-    await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
 
-    await refreshData();
-  }, [users, currentDate, projects, investmentPools, instantBonusRates, currentUser, refreshData]);
+    // 2. Distribute Instant Bonuses
+    // Investor Self-Bonus
+    await addBonus(userId, 'Instant', amount * effectiveInstantRates.investor, investmentId);
+
+    // Direct Referrer Bonus (Level 1)
+    if (investingUser.uplineId) {
+        await addBonus(investingUser.uplineId, 'Instant', amount * effectiveInstantRates.referrer, investmentId);
+        
+        // Indirect Upline Bonus (Level 2)
+        const directUpline = users.find(u => u.id === investingUser.uplineId);
+        if (directUpline && directUpline.uplineId) {
+             await addBonus(directUpline.uplineId, 'Instant', amount * effectiveInstantRates.upline, investmentId);
+        }
+    }
+
+    // 3. Distribute Team Builder Bonuses (Levels 1-9)
+    let currentUplineId = investingUser.uplineId;
+    let level = 0;
+    const maxLevels = Math.min(9, effectiveTeamRates.length);
+
+    while (currentUplineId && level < maxLevels) {
+        const rate = effectiveTeamRates[level];
+        if (rate > 0) {
+            await addBonus(currentUplineId, 'Team Builder', amount * rate, investmentId);
+        }
+        
+        // Move up
+        const uplineUser = users.find(u => u.id === currentUplineId);
+        currentUplineId = uplineUser ? uplineUser.uplineId : null;
+        level++;
+    }
+
+    if(supabase) await refreshData();
+
+  }, [users, currentDate, projects, investmentPools, instantBonusRates, teamBuilderBonusRates, currentUser, refreshData]);
 
   const addInvestmentFromBalance = useCallback(async (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
     if (!currentUser) return;
