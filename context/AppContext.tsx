@@ -121,7 +121,7 @@ const getStoredData = <T,>(key: string, defaultData: T): T => {
 const setStoredData = <T,>(key: string, data: T) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    console.log(`Saved ${key} to localStorage`); // Log enabled to verify persistence
+    // console.log(`Saved ${key} to localStorage`); 
   } catch (error) {
     console.error(`Error saving ${key} to localStorage:`, error);
   }
@@ -257,7 +257,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
           assetImageUrl: p.asset_image_url,
           assetValuation: Number(p.asset_valuation),
           valuationMethod: p.valuation_method,
-          valuationDate: p.valuation_date,
+          valuationDate: p.valuation_date || '',
           performanceHistory: p.performance_history,
           expectedYield: Number(p.expected_yield),
           proofOfOwnership: p.proof_of_ownership,
@@ -597,19 +597,26 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
     let effectiveInstantRates = instantBonusRates;
     let effectiveTeamRates = teamBuilderBonusRates;
+    let snapshotApy = 0;
     
     // Check for custom pool/project bonus rates - SPECIFIC OVERRIDES GLOBAL
     if (investmentType === 'pool') {
         const pool = investmentPools.find(p => p.id === assetId);
-        if (pool && pool.customBonusConfig) {
-            effectiveInstantRates = pool.customBonusConfig.instant;
-            effectiveTeamRates = pool.customBonusConfig.teamBuilder;
+        if (pool) {
+            snapshotApy = pool.apy;
+            if (pool.customBonusConfig) {
+                effectiveInstantRates = pool.customBonusConfig.instant;
+                effectiveTeamRates = pool.customBonusConfig.teamBuilder;
+            }
         }
     } else if (investmentType === 'project') {
         const project = projects.find(p => p.id === assetId);
-        if (project && project.customBonusConfig) {
-            effectiveInstantRates = project.customBonusConfig.instant;
-            effectiveTeamRates = project.customBonusConfig.teamBuilder;
+        if (project) {
+            snapshotApy = project.expectedYield;
+            if (project.customBonusConfig) {
+                effectiveInstantRates = project.customBonusConfig.instant;
+                effectiveTeamRates = project.customBonusConfig.teamBuilder;
+            }
         }
     }
     
@@ -617,7 +624,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     // Helper to add bonuses
     const addBonus = async (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
-        if (bonusAmount <= 0) return;
+        if (bonusAmount <= 0 || isNaN(bonusAmount)) return;
         
         if (!supabase) {
             setBonuses(prev => [...prev, { id: `bns-${Date.now()}-${Math.random()}`, userId: recipientId, type, sourceId, amount: bonusAmount, date: currentDate.toISOString().split('T')[0], read: false }]);
@@ -643,7 +650,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             poolId: investmentType === 'pool' ? assetId : undefined,
             projectName: investmentType === 'project' ? projects.find(p => p.id === assetId)?.tokenName : undefined,
             poolName: investmentType === 'pool' ? investmentPools.find(p => p.id === assetId)?.name : undefined,
-            totalProfitEarned: 0, source
+            totalProfitEarned: 0, source,
+            apy: snapshotApy
         };
         setInvestments(prev => [...prev, newInvestment]);
         setTransactions(prev => [...prev, {
@@ -666,7 +674,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         const { data: invData, error: invError } = await supabase.from('investments').insert({
             user_id: userId, amount, date: currentDate.toISOString().split('T')[0],
             status: 'Active', project_id: projectId, pool_id: poolId,
-            total_profit_earned: 0, source: source,
+            total_profit_earned: 0, source: source, apy: snapshotApy
         }).select().single();
 
         if (invError || !invData) { console.error(invError); return; }
@@ -695,13 +703,20 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         }
     }
 
-    // 3. Distribute Team Builder Bonuses (Levels 1-9)
+    // 3. Distribute Team Builder Bonuses (Levels 1-9) with Cycle Protection
     let currentUplineId = investingUser.uplineId;
     let level = 0;
     const maxLevels = Math.min(9, effectiveTeamRates.length);
+    const visitedUsers = new Set<string>([userId]);
 
     while (currentUplineId && level < maxLevels) {
-        const rate = effectiveTeamRates[level];
+        if (visitedUsers.has(currentUplineId)) {
+            console.warn("Circular dependency detected in bonus distribution. Stopping.");
+            break;
+        }
+        visitedUsers.add(currentUplineId);
+
+        const rate = effectiveTeamRates[level] || 0;
         if (rate > 0) {
             await addBonus(currentUplineId, 'Team Builder', amount * rate, investmentId);
         }
@@ -747,6 +762,13 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const addWithdrawal = useCallback(async (amount: number, balance: number, walletAddress: string) => {
     if (!currentUser) return;
+    
+    // Compliance Check
+    if (currentUser.kycStatus !== 'Verified') {
+        alert(t('profile.kyc.notSubmittedMessage'));
+        return;
+    }
+
     if (amount > balance) {
         alert("Withdrawal amount cannot exceed balance.");
         return;
@@ -776,7 +798,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       reason: `Withdraw to: ${walletAddress}`
     });
     await refreshData();
-  }, [currentUser, currentDate, refreshData]);
+  }, [currentUser, currentDate, refreshData, t]);
 
   const updateKycStatus = useCallback(async (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => {
       if (!supabase) {
@@ -897,16 +919,183 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   // --- SIMULATION LOGIC ---
   const runMonthlyCycle = useCallback((cycleDate: Date) => {
     console.log(`Running monthly cycle for ${cycleDate.toLocaleString('default', { month: 'long', year: 'numeric' })}...`);
-    alert("Monthly cycle simulation logic executed (Log only in Demo).");
-  }, []);
-  
-  const advanceDate = useCallback((days: number) => {
-    setCurrentDate(prevDate => {
-        const newDate = new Date(prevDate);
-        newDate.setDate(newDate.getDate() + days);
-        return newDate;
+    
+    // RANK PROMOTION LOGIC
+    // 1. Calculate downline counts dynamically
+    const downlineCounts: Record<string, number> = {};
+    const calculateDownline = (userId: string): number => {
+        if (downlineCounts[userId] !== undefined) return downlineCounts[userId];
+        
+        const directs = users.filter(u => u.uplineId === userId);
+        let count = directs.length;
+        for (const direct of directs) {
+            count += calculateDownline(direct.id);
+        }
+        downlineCounts[userId] = count;
+        return count;
+    };
+
+    let promotions = 0;
+    const promotedUsers: User[] = [];
+
+    // Evaluate each user
+    users.forEach(user => {
+        if (user.role === 'admin') return;
+        
+        const actualDownlineCount = calculateDownline(user.id);
+        const currentRank = user.rank;
+        let newRank = currentRank;
+
+        // Check if eligible for higher rank
+        // Iterate through ranks descending to find highest qualification
+        const sortedRanks = [...ranks].sort((a,b) => b.level - a.level);
+        
+        for (const rankConfig of sortedRanks) {
+            if (rankConfig.level <= currentRank) break; // Already higher or equal
+
+            const hasInvestment = user.totalInvestment >= rankConfig.minTotalInvestment;
+            const hasTeam = actualDownlineCount >= rankConfig.minAccounts;
+
+            if (hasInvestment && hasTeam) {
+                newRank = rankConfig.level;
+                break; // Found highest eligible rank
+            }
+        }
+
+        if (newRank > currentRank) {
+            promotedUsers.push({ ...user, rank: newRank, totalDownline: actualDownlineCount });
+            promotions++;
+        }
     });
-  }, []);
+
+    if (promotions > 0) {
+        if (!supabase) {
+            // Apply promotions locally
+            setUsers(prev => prev.map(u => {
+                const promoted = promotedUsers.find(p => p.id === u.id);
+                return promoted || u;
+            }));
+            
+            // Add notifications
+            promotedUsers.forEach(u => {
+                addNotification({
+                    userId: u.id,
+                    type: 'Rank Promotion',
+                    message: `Congratulations! You have been promoted to Rank L${u.rank} based on your monthly performance.`,
+                    date: cycleDate.toISOString().split('T')[0],
+                    read: false
+                });
+            });
+        } else {
+            // Apply to Supabase
+            Promise.all(promotedUsers.map(async (u) => {
+                await supabase.from('profiles').update({ rank: u.rank }).eq('id', u.id);
+                await supabase.from('notifications').insert({
+                    user_id: u.id,
+                    type: 'Rank Promotion',
+                    message: `Congratulations! You have been promoted to Rank L${u.rank} based on your monthly performance.`,
+                    date: cycleDate.toISOString().split('T')[0],
+                    read: false
+                });
+            })).then(() => refreshData());
+        }
+    }
+
+    alert(`Monthly cycle complete. ${promotions} users promoted.`);
+  }, [users, ranks, addNotification, refreshData]);
+  
+  const advanceDate = useCallback(async (days: number) => {
+    // 1. Advance the Clock
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + days);
+    setCurrentDate(newDate);
+
+    // 2. Generate Profit for active investments if in Demo Mode (Client Side Simulation)
+    // Note: In production (Supabase), this should be a scheduled Edge Function or pg_cron job.
+    if (!supabase || window.confirm('Generate simulated profit transactions for skipped days?')) {
+        console.log(`Advancing date by ${days} days... Generating profits.`);
+        
+        let profitTransactions: any[] = [];
+        
+        // Loop through each day skipped to generate accurate daily records
+        for (let i = 1; i <= days; i++) {
+            const simulationDate = new Date(currentDate);
+            simulationDate.setDate(simulationDate.getDate() + i);
+            const dateStr = simulationDate.toISOString().split('T')[0];
+
+            investments.forEach(inv => {
+                if (inv.status !== 'Active') return;
+
+                // Use snapshotted APY if available, otherwise fallback to project/pool current APY
+                let apy = inv.apy || 0;
+                
+                if (apy === 0) {
+                    if (inv.projectId) {
+                        const project = projects.find(p => p.id === inv.projectId);
+                        if (project) apy = project.expectedYield;
+                    } else if (inv.poolId) {
+                        const pool = investmentPools.find(p => p.id === inv.poolId);
+                        if (pool) apy = pool.apy;
+                    }
+                }
+
+                if (apy > 0) {
+                    const dailyRate = (apy / 100) / 365;
+                    const dailyProfit = inv.amount * dailyRate;
+                    
+                    profitTransactions.push({
+                        userId: inv.userId,
+                        investmentId: inv.id,
+                        amount: dailyProfit,
+                        date: dateStr
+                    });
+                }
+            });
+        }
+
+        if (profitTransactions.length > 0) {
+            if (!supabase) {
+                // Local State Update
+                const newTxns = profitTransactions.map((pt, idx) => ({
+                    id: `tx-profit-${Date.now()}-${idx}`,
+                    userId: pt.userId,
+                    type: 'Profit Share' as const,
+                    amount: pt.amount,
+                    txHash: 'AUTO-PROFIT',
+                    date: pt.date,
+                    investmentId: pt.investmentId
+                }));
+                
+                // Update Investments total profit
+                const updatedInvestments = [...investments];
+                profitTransactions.forEach(pt => {
+                    const inv = updatedInvestments.find(i => i.id === pt.investmentId);
+                    if (inv) inv.totalProfitEarned += pt.amount;
+                });
+
+                setTransactions(prev => [...prev, ...newTxns]);
+                setInvestments(updatedInvestments);
+                // Users total balance isn't explicitly stored, derived from txns
+            } else {
+                // Supabase Update
+                // Note: Batch inserts for speed
+                const txInserts = profitTransactions.map(pt => ({
+                    user_id: pt.userId,
+                    type: 'Profit Share',
+                    amount: pt.amount,
+                    tx_hash: 'AUTO-PROFIT',
+                    date: pt.date,
+                    investment_id: pt.investmentId
+                }));
+                
+                await supabase.from('transactions').insert(txInserts);
+                
+                // For now, just refresh to show new transactions
+                await refreshData();
+            }
+        }
+    }
+  }, [currentDate, investments, projects, investmentPools, refreshData]);
 
   const addProject = useCallback(async (project: Partial<Omit<Project, 'id'>>) => {
     if (!supabase) {
@@ -1252,8 +1441,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         // Handle initial investments in demo mode
         for (const inv of initialInvestments) {
              // Mock execute investment without modifying wallet balance (admin creation)
-             // Or we could reuse executeInvestment but that requires deposit source
-             // For simplicity, let's just add the investment and update user total
              const newInvId = `inv-${Date.now()}-${Math.random()}`;
              setInvestments(prev => [...prev, {
                  id: newInvId,
@@ -1266,7 +1453,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                  projectName: inv.type === 'project' ? projects.find(p => p.id === inv.assetId)?.tokenName : undefined,
                  poolName: inv.type === 'pool' ? investmentPools.find(p => p.id === inv.assetId)?.name : undefined,
                  totalProfitEarned: 0,
-                 source: 'deposit'
+                 source: 'deposit',
+                 apy: inv.type === 'project' ? projects.find(p => p.id === inv.assetId)?.expectedYield : investmentPools.find(p => p.id === inv.assetId)?.apy
              }]);
              // Add transaction for record
              setTransactions(prev => [...prev, {

@@ -103,6 +103,7 @@ export interface Investment {
   poolName?: string;
   totalProfitEarned: number;
   source: 'deposit' | 'profit_reinvestment';
+  apy?: number; // Snapshot of the APY at the time of investment
 }
 
 export interface Bonus {
