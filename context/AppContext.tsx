@@ -1193,13 +1193,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]);
         return;
     }
+    // Removing project_url and linked_project_id to prevent schema errors if columns don't exist
     const { error } = await supabase.from('investment_pools').insert({
         name: pool.name,
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        project_url: pool.projectUrl || null,
-        linked_project_id: pool.linkedProjectId || null
+        // project_url: pool.projectUrl || null,
+        // linked_project_id: pool.linkedProjectId || null
     });
     
     if (error) {
@@ -1215,13 +1216,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p));
         return;
     }
+    // Removing project_url and linked_project_id to prevent schema errors if columns don't exist
     const { error } = await supabase.from('investment_pools').update({
         name: pool.name,
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        project_url: pool.projectUrl || null,
-        linked_project_id: pool.linkedProjectId || null
+        // project_url: pool.projectUrl || null,
+        // linked_project_id: pool.linkedProjectId || null
     }).eq('id', pool.id);
     
     if (error) {
