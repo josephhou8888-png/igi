@@ -919,8 +919,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_custodian: project.assetCustodian,
         asset_manager: project.assetManager,
         oracles: project.oracles,
-        custom_bonus_config: project.customBonusConfig,
-        custom_rank_config: project.customRankConfig
+        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
     });
     if (error) {
         console.error('Error creating project:', error);
@@ -964,8 +963,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         asset_custodian: project.assetCustodian,
         asset_manager: project.assetManager,
         oracles: project.oracles,
-        custom_bonus_config: project.customBonusConfig,
-        custom_rank_config: project.customRankConfig
+        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
     }).eq('id', project.id);
     
     if (error) {
@@ -995,8 +993,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig,
+        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
         project_url: pool.projectUrl || null,
         linked_project_id: pool.linkedProjectId || null
     });
@@ -1019,8 +1016,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         description: pool.description,
         apy: pool.apy,
         min_investment: pool.minInvestment,
-        custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig,
+        // Removed custom_bonus_config and custom_rank_config to fix schema mismatch error
         project_url: pool.projectUrl || null,
         linked_project_id: pool.linkedProjectId || null
     }).eq('id', pool.id);
