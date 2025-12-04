@@ -617,19 +617,23 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     
     const investmentId = `inv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
     
-    // Helper to add bonuses
-    const addBonus = async (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
+    // Arrays to hold bulk insert data
+    const bonusInserts: any[] = [];
+    const transactionInserts: any[] = [];
+
+    // Helper to queue bonuses
+    const queueBonus = (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
         if (bonusAmount <= 0 || isNaN(bonusAmount)) return;
         
         if (!supabase) {
             setBonuses(prev => [...prev, { id: `bns-${Date.now()}-${Math.random()}`, userId: recipientId, type, sourceId, amount: bonusAmount, date: currentDate.toISOString().split('T')[0], read: false }]);
             setTransactions(prev => [...prev, { id: `tx-bns-${Date.now()}-${Math.random()}`, userId: recipientId, type: 'Bonus', amount: bonusAmount, txHash: `BONUS-${type.toUpperCase()}`, date: currentDate.toISOString().split('T')[0] }]);
         } else {
-            await supabase.from('bonuses').insert({
+            bonusInserts.push({
                 user_id: recipientId, type, source_id: sourceId, amount: bonusAmount,
                 date: currentDate.toISOString().split('T')[0], read: false,
             });
-            await supabase.from('transactions').insert({ 
+            transactionInserts.push({ 
                 user_id: recipientId, type: 'Bonus', amount: bonusAmount, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...${type}` 
             });
         }
@@ -681,45 +685,56 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         });
         
         await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
-    }
-
-    // 2. Distribute Instant Bonuses
-    // Investor Self-Bonus
-    await addBonus(userId, 'Instant', amount * effectiveInstantRates.investor, investmentId);
-
-    // Direct Referrer Bonus (Level 1)
-    if (investingUser.uplineId) {
-        await addBonus(investingUser.uplineId, 'Instant', amount * effectiveInstantRates.referrer, investmentId);
         
-        // Indirect Upline Bonus (Level 2)
-        const directUpline = users.find(u => u.id === investingUser.uplineId);
-        if (directUpline && directUpline.uplineId) {
-             await addBonus(directUpline.uplineId, 'Instant', amount * effectiveInstantRates.upline, investmentId);
-        }
-    }
+        // Use the real ID for bonuses
+        const realInvestmentId = invData.id;
 
-    // 3. Distribute Team Builder Bonuses (Levels 1-9) with Cycle Protection
-    let currentUplineId = investingUser.uplineId;
-    let level = 0;
-    const maxLevels = Math.min(9, effectiveTeamRates.length);
-    const visitedUsers = new Set<string>([userId]);
+        // 2. Distribute Instant Bonuses
+        // Investor Self-Bonus
+        queueBonus(userId, 'Instant', amount * effectiveInstantRates.investor, realInvestmentId);
 
-    while (currentUplineId && level < maxLevels) {
-        if (visitedUsers.has(currentUplineId)) {
-            console.warn("Circular dependency detected in bonus distribution. Stopping.");
-            break;
+        // Direct Referrer Bonus (Level 1)
+        if (investingUser.uplineId) {
+            queueBonus(investingUser.uplineId, 'Instant', amount * effectiveInstantRates.referrer, realInvestmentId);
+            
+            // Indirect Upline Bonus (Level 2)
+            const directUpline = users.find(u => u.id === investingUser.uplineId);
+            if (directUpline && directUpline.uplineId) {
+                queueBonus(directUpline.uplineId, 'Instant', amount * effectiveInstantRates.upline, realInvestmentId);
+            }
         }
-        visitedUsers.add(currentUplineId);
 
-        const rate = effectiveTeamRates[level] || 0;
-        if (rate > 0) {
-            await addBonus(currentUplineId, 'Team Builder', amount * rate, investmentId);
+        // 3. Distribute Team Builder Bonuses (Levels 1-9) with Cycle Protection
+        let currentUplineId = investingUser.uplineId;
+        let level = 0;
+        const maxLevels = Math.min(9, effectiveTeamRates.length);
+        const visitedUsers = new Set<string>([userId]);
+
+        while (currentUplineId && level < maxLevels) {
+            if (visitedUsers.has(currentUplineId)) {
+                console.warn("Circular dependency detected in bonus distribution. Stopping.");
+                break;
+            }
+            visitedUsers.add(currentUplineId);
+
+            const rate = effectiveTeamRates[level] || 0;
+            if (rate > 0) {
+                queueBonus(currentUplineId, 'Team Builder', amount * rate, realInvestmentId);
+            }
+            
+            // Move up
+            const uplineUser = users.find(u => u.id === currentUplineId);
+            currentUplineId = uplineUser ? uplineUser.uplineId : null;
+            level++;
         }
-        
-        // Move up
-        const uplineUser = users.find(u => u.id === currentUplineId);
-        currentUplineId = uplineUser ? uplineUser.uplineId : null;
-        level++;
+
+        // Perform Batch Inserts
+        if (bonusInserts.length > 0) {
+            await supabase.from('bonuses').insert(bonusInserts);
+        }
+        if (transactionInserts.length > 0) {
+            await supabase.from('transactions').insert(transactionInserts);
+        }
     }
 
     if(supabase) await refreshData();
@@ -993,16 +1008,24 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 });
             });
         } else {
+            // Batch notifications
+            const notificationInserts = promotedUsers.map(u => ({
+                user_id: u.id,
+                type: 'Rank Promotion',
+                message: `Congratulations! You have been promoted to Rank L${u.rank} based on your monthly performance.`,
+                date: cycleDate.toISOString().split('T')[0],
+                read: false
+            }));
+
+            // We still need to update profiles individually as they have different values
             Promise.all(promotedUsers.map(async (u) => {
                 await supabase.from('profiles').update({ rank: u.rank }).eq('id', u.id);
-                await supabase.from('notifications').insert({
-                    user_id: u.id,
-                    type: 'Rank Promotion',
-                    message: `Congratulations! You have been promoted to Rank L${u.rank} based on your monthly performance.`,
-                    date: cycleDate.toISOString().split('T')[0],
-                    read: false
-                });
-            })).then(() => refreshData());
+            })).then(async () => {
+                if(notificationInserts.length > 0) {
+                    await supabase.from('notifications').insert(notificationInserts);
+                }
+                refreshData();
+            });
         }
     }
 
@@ -1020,6 +1043,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         console.log(`Advancing date by ${days} days... Generating profits.`);
         
         let profitTransactions: any[] = [];
+        // Map to track total earned per investment ID to update investment records
+        const investmentProfitUpdates: Record<string, number> = {};
         
         for (let i = 1; i <= days; i++) {
             const simulationDate = new Date(currentDate);
@@ -1051,6 +1076,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                         amount: dailyProfit,
                         date: dateStr
                     });
+
+                    // Aggregate total profit earned per investment
+                    investmentProfitUpdates[inv.id] = (investmentProfitUpdates[inv.id] || 0) + dailyProfit;
                 }
             });
         }
@@ -1085,7 +1113,22 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                     investment_id: pt.investmentId
                 }));
                 
+                // Batch insert transactions
                 await supabase.from('transactions').insert(txInserts);
+
+                // Update investment records with new totals (Simulation Sync Fix)
+                // Note: supabase doesn't support bulk update with different values easily. 
+                // We'll iterate through aggregated updates.
+                const updatePromises = Object.entries(investmentProfitUpdates).map(async ([invId, earned]) => {
+                    const currentInv = investments.find(i => i.id === invId);
+                    if (currentInv) {
+                        await supabase.from('investments').update({ 
+                            total_profit_earned: currentInv.totalProfitEarned + earned 
+                        }).eq('id', invId);
+                    }
+                });
+                
+                await Promise.all(updatePromises);
                 await refreshData();
             }
         }
