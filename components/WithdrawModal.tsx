@@ -57,7 +57,8 @@ const WithdrawModal: React.FC<WithdrawModalProps> = ({ onClose, currentBalance }
 
   const handleConfirmWithdrawal = () => {
     const numericAmount = Number(amount);
-    addWithdrawal(numericAmount, currentBalance, walletAddress);
+    // Updated: Do not pass currentBalance, logic handles it securely inside addWithdrawal
+    addWithdrawal(numericAmount, walletAddress);
     alert(t('withdrawModal.requestSuccess'));
     onClose();
   };

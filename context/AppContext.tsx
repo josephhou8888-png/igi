@@ -21,6 +21,11 @@ import { supabase } from '../supabaseClient';
 
 type InitialInvestmentData = { type: 'project' | 'pool', assetId: string, amount: number };
 
+// Helper for financial precision
+const preciseMath = (value: number, precision = 4) => {
+    return parseFloat(value.toFixed(precision));
+};
+
 interface AppContextType {
   users: User[];
   investments: Investment[];
@@ -41,7 +46,7 @@ interface AppContextType {
   currentDate: Date;
   addInvestmentFromBalance: (amount: number, assetId: string, type: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => Promise<void>;
   addCryptoDeposit: (amount: number, txHash: string, reason?: string) => Promise<void>;
-  addWithdrawal: (amount: number, balance: number, walletAddress: string) => Promise<void>;
+  addWithdrawal: (amount: number, walletAddress: string) => Promise<void>;
   updateKycStatus: (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => Promise<void>;
   toggleFreezeUser: (userId: string) => Promise<void>;
   markNotificationsAsRead: () => Promise<void>;
@@ -417,6 +422,35 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   useEffect(() => { if (!supabase) setStoredData('igi_demo_notifications', notifications) }, [notifications]);
 
 
+  const getUserBalances = useCallback((userId: string) => {
+      const userTransactions = transactions.filter(t => t.userId === userId);
+      const userInvestments = investments.filter(i => i.userId === userId);
+
+      const totalDeposits = userTransactions
+        .filter(t => 
+            (t.type === 'Deposit' && (t.status === 'completed' || t.status === undefined)) || 
+            t.type === 'Manual Bonus'
+        )
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalProfits = userTransactions.filter(t => t.type === 'Profit Share' || t.type === 'Bonus').reduce((sum, t) => sum + t.amount, 0);
+      const totalWithdrawals = userTransactions.filter(t => (t.type === 'Withdrawal' && t.status !== 'rejected') || t.type === 'Manual Deduction').reduce((sum, t) => sum + t.amount, 0);
+
+      const investmentsFromDeposit = userInvestments.filter(i => i.source === 'deposit').reduce((sum, i) => sum + i.amount, 0);
+      const reinvestmentsFromProfit = userInvestments.filter(i => i.source === 'profit_reinvestment').reduce((sum, i) => sum + i.amount, 0);
+      
+      const profitBalanceAfterReinvestment = preciseMath(totalProfits - reinvestmentsFromProfit);
+      const withdrawalsFromProfit = Math.min(Math.max(0, profitBalanceAfterReinvestment), totalWithdrawals);
+      const profitBalance = preciseMath(profitBalanceAfterReinvestment - withdrawalsFromProfit);
+
+      const depositBalanceAfterInvestment = preciseMath(totalDeposits - investmentsFromDeposit);
+      const withdrawalsFromDeposit = preciseMath(totalWithdrawals - withdrawalsFromProfit);
+      const depositBalance = preciseMath(depositBalanceAfterInvestment - withdrawalsFromDeposit);
+
+      return { depositBalance: Math.max(0, depositBalance), profitBalance: Math.max(0, profitBalance) };
+  }, [transactions, investments]);
+
+
   // --- AUTHENTICATION LOGIC ---
   const login = useCallback(async (email: string, password: string) => {
     if (!supabase) {
@@ -587,157 +621,163 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   // --- CRUD Operations replaced with Supabase calls ---
 
   const executeInvestment = useCallback(async (userId: string, amount: number, assetId: string, investmentType: 'project' | 'pool', source: 'deposit' | 'profit_reinvestment') => {
-    const investingUser = users.find(u => u.id === userId);
-    if (!investingUser) return;
+    try {
+        const investingUser = users.find(u => u.id === userId);
+        if (!investingUser) throw new Error("User not found");
 
-    let effectiveInstantRates = instantBonusRates;
-    let effectiveTeamRates = teamBuilderBonusRates;
-    let snapshotApy = 0;
-    
-    // Check for custom pool/project bonus rates - SPECIFIC OVERRIDES GLOBAL
-    if (investmentType === 'pool') {
-        const pool = investmentPools.find(p => p.id === assetId);
-        if (pool) {
-            snapshotApy = pool.apy;
-            if (pool.customBonusConfig) {
-                effectiveInstantRates = pool.customBonusConfig.instant;
-                effectiveTeamRates = pool.customBonusConfig.teamBuilder;
-            }
-        }
-    } else if (investmentType === 'project') {
-        const project = projects.find(p => p.id === assetId);
-        if (project) {
-            snapshotApy = project.expectedYield;
-            if (project.customBonusConfig) {
-                effectiveInstantRates = project.customBonusConfig.instant;
-                effectiveTeamRates = project.customBonusConfig.teamBuilder;
-            }
-        }
-    }
-    
-    const investmentId = `inv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    
-    // Arrays to hold bulk insert data
-    const bonusInserts: any[] = [];
-    const transactionInserts: any[] = [];
-
-    // Helper to queue bonuses
-    const queueBonus = (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
-        if (bonusAmount <= 0 || isNaN(bonusAmount)) return;
+        let effectiveInstantRates = instantBonusRates;
+        let effectiveTeamRates = teamBuilderBonusRates;
+        let snapshotApy = 0;
         
-        if (!supabase) {
-            setBonuses(prev => [...prev, { id: `bns-${Date.now()}-${Math.random()}`, userId: recipientId, type, sourceId, amount: bonusAmount, date: currentDate.toISOString().split('T')[0], read: false }]);
-            setTransactions(prev => [...prev, { id: `tx-bns-${Date.now()}-${Math.random()}`, userId: recipientId, type: 'Bonus', amount: bonusAmount, txHash: `BONUS-${type.toUpperCase()}`, date: currentDate.toISOString().split('T')[0] }]);
-        } else {
-            bonusInserts.push({
-                user_id: recipientId, type, source_id: sourceId, amount: bonusAmount,
-                date: currentDate.toISOString().split('T')[0], read: false,
-            });
-            transactionInserts.push({ 
-                user_id: recipientId, type: 'Bonus', amount: bonusAmount, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...${type}` 
-            });
+        // Check for custom pool/project bonus rates - SPECIFIC OVERRIDES GLOBAL
+        if (investmentType === 'pool') {
+            const pool = investmentPools.find(p => p.id === assetId);
+            if (pool) {
+                snapshotApy = pool.apy;
+                if (pool.customBonusConfig) {
+                    effectiveInstantRates = pool.customBonusConfig.instant;
+                    effectiveTeamRates = pool.customBonusConfig.teamBuilder;
+                }
+            }
+        } else if (investmentType === 'project') {
+            const project = projects.find(p => p.id === assetId);
+            if (project) {
+                snapshotApy = project.expectedYield;
+                if (project.customBonusConfig) {
+                    effectiveInstantRates = project.customBonusConfig.instant;
+                    effectiveTeamRates = project.customBonusConfig.teamBuilder;
+                }
+            }
         }
-    };
+        
+        const investmentId = `inv-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        
+        // Arrays to hold bulk insert data
+        const bonusInserts: any[] = [];
+        const transactionInserts: any[] = [];
 
-    // 1. Create Investment & Transaction
-    if (!supabase) {
-        const newInvestment: Investment = {
-            id: investmentId,
-            userId, amount, date: currentDate.toISOString().split('T')[0],
-            status: 'Active',
-            projectId: investmentType === 'project' ? assetId : undefined,
-            poolId: investmentType === 'pool' ? assetId : undefined,
-            projectName: investmentType === 'project' ? projects.find(p => p.id === assetId)?.tokenName : undefined,
-            poolName: investmentType === 'pool' ? investmentPools.find(p => p.id === assetId)?.name : undefined,
-            totalProfitEarned: 0, source,
-            apy: snapshotApy
+        // Helper to queue bonuses
+        const queueBonus = (recipientId: string, type: 'Instant' | 'Team Builder', bonusAmount: number, sourceId: string) => {
+            const amount = preciseMath(bonusAmount);
+            if (amount <= 0 || isNaN(amount)) return;
+            
+            if (!supabase) {
+                setBonuses(prev => [...prev, { id: `bns-${Date.now()}-${Math.random()}`, userId: recipientId, type, sourceId, amount, date: currentDate.toISOString().split('T')[0], read: false }]);
+                setTransactions(prev => [...prev, { id: `tx-bns-${Date.now()}-${Math.random()}`, userId: recipientId, type: 'Bonus', amount, txHash: `BONUS-${type.toUpperCase()}`, date: currentDate.toISOString().split('T')[0] }]);
+            } else {
+                bonusInserts.push({
+                    user_id: recipientId, type, source_id: sourceId, amount,
+                    date: currentDate.toISOString().split('T')[0], read: false,
+                });
+                transactionInserts.push({ 
+                    user_id: recipientId, type: 'Bonus', amount, date: currentDate.toISOString().split('T')[0], tx_hash: `0x...${type}` 
+                });
+            }
         };
-        setInvestments(prev => [...prev, newInvestment]);
-        setTransactions(prev => [...prev, {
-            id: `tx-${Date.now()}`, userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
-            amount, txHash: 'DEMO-HASH', date: currentDate.toISOString().split('T')[0], investmentId: newInvestment.id
-        }]);
-        
-        // Update user total investment
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: u.totalInvestment + amount } : u));
-        if (currentUser?.id === userId) setCurrentUser(prev => prev ? { ...prev, totalInvestment: prev.totalInvestment + amount } : null);
-    } else {
-        let projectId = null;
-        let poolId = null;
-        if (investmentType === 'project') {
-            projectId = projects.find(p => p.id === assetId)?.id;
+
+        // 1. Create Investment & Transaction
+        if (!supabase) {
+            const newInvestment: Investment = {
+                id: investmentId,
+                userId, amount: preciseMath(amount), date: currentDate.toISOString().split('T')[0],
+                status: 'Active',
+                projectId: investmentType === 'project' ? assetId : undefined,
+                poolId: investmentType === 'pool' ? assetId : undefined,
+                projectName: investmentType === 'project' ? projects.find(p => p.id === assetId)?.tokenName : undefined,
+                poolName: investmentType === 'pool' ? investmentPools.find(p => p.id === assetId)?.name : undefined,
+                totalProfitEarned: 0, source,
+                apy: snapshotApy
+            };
+            setInvestments(prev => [...prev, newInvestment]);
+            setTransactions(prev => [...prev, {
+                id: `tx-${Date.now()}`, userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
+                amount: preciseMath(amount), txHash: 'DEMO-HASH', date: currentDate.toISOString().split('T')[0], investmentId: newInvestment.id
+            }]);
+            
+            // Update user total investment
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: preciseMath(u.totalInvestment + amount) } : u));
+            if (currentUser?.id === userId) setCurrentUser(prev => prev ? { ...prev, totalInvestment: preciseMath(prev.totalInvestment + amount) } : null);
         } else {
-            poolId = investmentPools.find(p => p.id === assetId)?.id;
-        }
-        
-        const { data: invData, error: invError } = await supabase.from('investments').insert({
-            user_id: userId, amount, date: currentDate.toISOString().split('T')[0],
-            status: 'Active', project_id: projectId, pool_id: poolId,
-            total_profit_earned: 0, source: source, apy: snapshotApy
-        }).select().single();
-
-        if (invError || !invData) { console.error(invError); return; }
-        
-        await supabase.from('transactions').insert({
-            user_id: userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
-            amount, tx_hash: `0x...${Date.now().toString().slice(-4)}`, date: currentDate.toISOString().split('T')[0],
-            investment_id: invData.id,
-        });
-        
-        await supabase.from('profiles').update({ total_investment: investingUser.totalInvestment + amount }).eq('id', userId);
-        
-        // Use the real ID for bonuses
-        const realInvestmentId = invData.id;
-
-        // 2. Distribute Instant Bonuses
-        // Investor Self-Bonus
-        queueBonus(userId, 'Instant', amount * effectiveInstantRates.investor, realInvestmentId);
-
-        // Direct Referrer Bonus (Level 1)
-        if (investingUser.uplineId) {
-            queueBonus(investingUser.uplineId, 'Instant', amount * effectiveInstantRates.referrer, realInvestmentId);
-            
-            // Indirect Upline Bonus (Level 2)
-            const directUpline = users.find(u => u.id === investingUser.uplineId);
-            if (directUpline && directUpline.uplineId) {
-                queueBonus(directUpline.uplineId, 'Instant', amount * effectiveInstantRates.upline, realInvestmentId);
-            }
-        }
-
-        // 3. Distribute Team Builder Bonuses (Levels 1-9) with Cycle Protection
-        let currentUplineId = investingUser.uplineId;
-        let level = 0;
-        const maxLevels = Math.min(9, effectiveTeamRates.length);
-        const visitedUsers = new Set<string>([userId]);
-
-        while (currentUplineId && level < maxLevels) {
-            if (visitedUsers.has(currentUplineId)) {
-                console.warn("Circular dependency detected in bonus distribution. Stopping.");
-                break;
-            }
-            visitedUsers.add(currentUplineId);
-
-            const rate = effectiveTeamRates[level] || 0;
-            if (rate > 0) {
-                queueBonus(currentUplineId, 'Team Builder', amount * rate, realInvestmentId);
+            let projectId = null;
+            let poolId = null;
+            if (investmentType === 'project') {
+                projectId = projects.find(p => p.id === assetId)?.id;
+            } else {
+                poolId = investmentPools.find(p => p.id === assetId)?.id;
             }
             
-            // Move up
-            const uplineUser = users.find(u => u.id === currentUplineId);
-            currentUplineId = uplineUser ? uplineUser.uplineId : null;
-            level++;
+            const { data: invData, error: invError } = await supabase.from('investments').insert({
+                user_id: userId, amount: preciseMath(amount), date: currentDate.toISOString().split('T')[0],
+                status: 'Active', project_id: projectId, pool_id: poolId,
+                total_profit_earned: 0, source: source, apy: snapshotApy
+            }).select().single();
+
+            if (invError || !invData) { throw new Error(invError?.message || "Investment creation failed"); }
+            
+            await supabase.from('transactions').insert({
+                user_id: userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
+                amount: preciseMath(amount), tx_hash: `0x...${Date.now().toString().slice(-4)}`, date: currentDate.toISOString().split('T')[0],
+                investment_id: invData.id,
+            });
+            
+            await supabase.from('profiles').update({ total_investment: preciseMath(investingUser.totalInvestment + amount) }).eq('id', userId);
+            
+            // Use the real ID for bonuses
+            const realInvestmentId = invData.id;
+
+            // 2. Distribute Instant Bonuses
+            // Investor Self-Bonus
+            queueBonus(userId, 'Instant', amount * effectiveInstantRates.investor, realInvestmentId);
+
+            // Direct Referrer Bonus (Level 1)
+            if (investingUser.uplineId) {
+                queueBonus(investingUser.uplineId, 'Instant', amount * effectiveInstantRates.referrer, realInvestmentId);
+                
+                // Indirect Upline Bonus (Level 2)
+                const directUpline = users.find(u => u.id === investingUser.uplineId);
+                if (directUpline && directUpline.uplineId) {
+                    queueBonus(directUpline.uplineId, 'Instant', amount * effectiveInstantRates.upline, realInvestmentId);
+                }
+            }
+
+            // 3. Distribute Team Builder Bonuses (Levels 1-9) with Cycle Protection
+            let currentUplineId = investingUser.uplineId;
+            let level = 0;
+            const maxLevels = Math.min(9, effectiveTeamRates.length);
+            const visitedUsers = new Set<string>([userId]);
+
+            while (currentUplineId && level < maxLevels) {
+                if (visitedUsers.has(currentUplineId)) {
+                    console.warn("Circular dependency detected in bonus distribution. Stopping.");
+                    break;
+                }
+                visitedUsers.add(currentUplineId);
+
+                const rate = effectiveTeamRates[level] || 0;
+                if (rate > 0) {
+                    queueBonus(currentUplineId, 'Team Builder', amount * rate, realInvestmentId);
+                }
+                
+                // Move up
+                const uplineUser = users.find(u => u.id === currentUplineId);
+                currentUplineId = uplineUser ? uplineUser.uplineId : null;
+                level++;
+            }
+
+            // Perform Batch Inserts
+            if (bonusInserts.length > 0) {
+                await supabase.from('bonuses').insert(bonusInserts);
+            }
+            if (transactionInserts.length > 0) {
+                await supabase.from('transactions').insert(transactionInserts);
+            }
         }
 
-        // Perform Batch Inserts
-        if (bonusInserts.length > 0) {
-            await supabase.from('bonuses').insert(bonusInserts);
-        }
-        if (transactionInserts.length > 0) {
-            await supabase.from('transactions').insert(transactionInserts);
-        }
+        if(supabase) await refreshData();
+    } catch (e) {
+        console.error("Execute Investment Error:", e);
+        alert("Investment failed. Please check console for details.");
     }
-
-    if(supabase) await refreshData();
 
   }, [users, currentDate, projects, investmentPools, instantBonusRates, teamBuilderBonusRates, currentUser, refreshData]);
 
@@ -751,7 +791,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       
       if (!supabase) {
           setTransactions(prev => [...prev, {
-              id: `tx-dep-${Date.now()}`, userId: currentUser.id, type: 'Deposit', amount, txHash, date: currentDate.toISOString().split('T')[0], status: 'pending', reason: reason
+              id: `tx-dep-${Date.now()}`, userId: currentUser.id, type: 'Deposit', amount: preciseMath(amount), txHash, date: currentDate.toISOString().split('T')[0], status: 'pending', reason: reason
           }]);
           alert("Deposit request added locally (Demo Mode)");
           return;
@@ -760,7 +800,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
       await supabase.from('transactions').insert({
           user_id: currentUser.id,
           type: 'Deposit',
-          amount,
+          amount: preciseMath(amount),
           tx_hash: txHash,
           date: currentDate.toISOString().split('T')[0],
           status: 'pending',
@@ -770,7 +810,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [currentUser, currentDate, refreshData]);
 
 
-  const addWithdrawal = useCallback(async (amount: number, balance: number, walletAddress: string) => {
+  const addWithdrawal = useCallback(async (amount: number, walletAddress: string) => {
     if (!currentUser) return;
     
     // Compliance Check
@@ -779,7 +819,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         return;
     }
 
-    if (amount > balance) {
+    // Secure Balance Check (Internal Calculation)
+    const { depositBalance, profitBalance } = getUserBalances(currentUser.id);
+    const availableTotal = preciseMath(depositBalance + profitBalance);
+
+    if (amount > availableTotal) {
         alert("Withdrawal amount cannot exceed balance.");
         return;
     }
@@ -789,7 +833,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             id: `tx-wd-${Date.now()}`, 
             userId: currentUser.id, 
             type: 'Withdrawal', 
-            amount, 
+            amount: preciseMath(amount), 
             txHash: 'PENDING', 
             date: currentDate.toISOString().split('T')[0],
             status: 'pending',
@@ -801,14 +845,14 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     await supabase.from('transactions').insert({
       user_id: currentUser.id, 
       type: 'Withdrawal', 
-      amount,
+      amount: preciseMath(amount),
       date: currentDate.toISOString().split('T')[0], 
       tx_hash: 'PENDING',
       status: 'pending',
       reason: `Withdraw to: ${walletAddress}`
     });
     await refreshData();
-  }, [currentUser, currentDate, refreshData, t]);
+  }, [currentUser, currentDate, refreshData, t, getUserBalances]);
 
   const updateKycStatus = useCallback(async (userId: string, status: 'Verified' | 'Pending' | 'Rejected' | 'Not Submitted') => {
       if (!supabase) {
@@ -906,11 +950,11 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   const addManualTransaction = useCallback(async (userId: string, type: 'Manual Bonus' | 'Manual Deduction', amount: number, reason: string) => {
     if (!supabase) {
         setTransactions(prev => [...prev, {
-            id: `tx-man-${Date.now()}`, userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], txHash: 'DEMO-MANUAL'
+            id: `tx-man-${Date.now()}`, userId, type, amount: preciseMath(amount), reason, date: currentDate.toISOString().split('T')[0], txHash: 'DEMO-MANUAL'
         }]);
         return;
     }
-    await supabase.from('transactions').insert({ user_id: userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` });
+    await supabase.from('transactions').insert({ user_id: userId, type, amount: preciseMath(amount), reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` });
     await refreshData();
   }, [currentDate, refreshData]);
   
@@ -1068,7 +1112,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
                 if (apy > 0) {
                     const dailyRate = (apy / 100) / 365;
-                    const dailyProfit = inv.amount * dailyRate;
+                    const dailyProfit = preciseMath(inv.amount * dailyRate);
                     
                     profitTransactions.push({
                         userId: inv.userId,
@@ -1098,7 +1142,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                 const updatedInvestments = [...investments];
                 profitTransactions.forEach(pt => {
                     const inv = updatedInvestments.find(i => i.id === pt.investmentId);
-                    if (inv) inv.totalProfitEarned += pt.amount;
+                    if (inv) inv.totalProfitEarned = preciseMath(inv.totalProfitEarned + pt.amount);
                 });
 
                 setTransactions(prev => [...prev, ...newTxns]);
@@ -1123,7 +1167,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
                     const currentInv = investments.find(i => i.id === invId);
                     if (currentInv) {
                         await supabase.from('investments').update({ 
-                            total_profit_earned: currentInv.totalProfitEarned + earned 
+                            total_profit_earned: preciseMath(currentInv.totalProfitEarned + earned)
                         }).eq('id', invId);
                     }
                 });
@@ -1302,34 +1346,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     });
     await refreshData();
   }, [addNotification, currentDate, refreshData]);
-
-  const getUserBalances = useCallback((userId: string) => {
-      const userTransactions = transactions.filter(t => t.userId === userId);
-      const userInvestments = investments.filter(i => i.userId === userId);
-
-      const totalDeposits = userTransactions
-        .filter(t => 
-            (t.type === 'Deposit' && (t.status === 'completed' || t.status === undefined)) || 
-            t.type === 'Manual Bonus'
-        )
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const totalProfits = userTransactions.filter(t => t.type === 'Profit Share' || t.type === 'Bonus').reduce((sum, t) => sum + t.amount, 0);
-      const totalWithdrawals = userTransactions.filter(t => (t.type === 'Withdrawal' && t.status !== 'rejected') || t.type === 'Manual Deduction').reduce((sum, t) => sum + t.amount, 0);
-
-      const investmentsFromDeposit = userInvestments.filter(i => i.source === 'deposit').reduce((sum, i) => sum + i.amount, 0);
-      const reinvestmentsFromProfit = userInvestments.filter(i => i.source === 'profit_reinvestment').reduce((sum, i) => sum + i.amount, 0);
-      
-      const profitBalanceAfterReinvestment = totalProfits - reinvestmentsFromProfit;
-      const withdrawalsFromProfit = Math.min(Math.max(0, profitBalanceAfterReinvestment), totalWithdrawals);
-      const profitBalance = profitBalanceAfterReinvestment - withdrawalsFromProfit;
-
-      const depositBalanceAfterInvestment = totalDeposits - investmentsFromDeposit;
-      const withdrawalsFromDeposit = totalWithdrawals - withdrawalsFromProfit;
-      const depositBalance = depositBalanceAfterInvestment - withdrawalsFromDeposit;
-
-      return { depositBalance: Math.max(0, depositBalance), profitBalance: Math.max(0, profitBalance) };
-  }, [transactions, investments]);
 
   const connectSolanaWallet = useCallback(async () => {
     if (window.solana) {
@@ -1542,7 +1558,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
             id: `tx-adm-dep-${Date.now()}`,
             userId,
             type: 'Deposit',
-            amount,
+            amount: preciseMath(amount),
             txHash: 'ADMIN-ADD',
             date: currentDate.toISOString().split('T')[0],
             status: 'completed'
@@ -1551,7 +1567,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         await supabase.from('transactions').insert({
             user_id: userId,
             type: 'Deposit',
-            amount,
+            amount: preciseMath(amount),
             tx_hash: `ADMIN-ADD-${Date.now()}`,
             date: currentDate.toISOString().split('T')[0],
             status: 'completed'
