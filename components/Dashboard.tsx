@@ -17,13 +17,35 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   const { t } = useLocalization();
   const { addToast } = useToast();
   
-  const { incomeToday, incomeThisMonth, lifetimeBonuses } = useMemo(() => {
-      if (!currentUser) return { incomeToday: 0, incomeThisMonth: 0, lifetimeBonuses: 0 };
+  // Calculate Projected Daily Income (Yield) based on active investments
+  // This ensures the user sees their daily earning rate immediately, rather than waiting for a transaction to hit.
+  const currentDailyYield = useMemo(() => {
+    if (!currentUser) return 0;
+    return investments
+        .filter(inv => inv.userId === currentUser.id && inv.status === 'Active')
+        .reduce((acc, inv) => {
+            let apy = inv.apy || 0;
+            // Fallback lookup if APY wasn't snapshotted (legacy data)
+            if (!apy) {
+                if (inv.projectId) {
+                    const p = projects.find(p => p.id === inv.projectId);
+                    if (p) apy = p.expectedYield;
+                } else if (inv.poolId) {
+                    const p = investmentPools.find(p => p.id === inv.poolId);
+                    if (p) apy = p.apy;
+                }
+            }
+            // Daily Yield = Amount * (APY / 100) / 365
+            return acc + (inv.amount * (apy / 100) / 365);
+        }, 0);
+  }, [investments, currentUser, projects, investmentPools]);
+
+  const { incomeThisMonth, lifetimeBonuses } = useMemo(() => {
+      if (!currentUser) return { incomeThisMonth: 0, lifetimeBonuses: 0 };
       
       const todayStr = currentDate.toISOString().split('T')[0];
       const currentMonthPrefix = todayStr.substring(0, 7); // YYYY-MM
 
-      let today = 0;
       let thisMonth = 0;
       let lifetimeBonusTotal = 0;
 
@@ -46,10 +68,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
               if (tDateStr.startsWith(currentMonthPrefix)) {
                   thisMonth += t.amount;
               }
-              
-              if (tDateStr === todayStr && isProfitShare) {
-                  today += t.amount;
-              }
 
               if (isBonus) {
                   lifetimeBonusTotal += t.amount;
@@ -57,7 +75,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
           }
       });
 
-      return { incomeToday: today, incomeThisMonth: thisMonth, lifetimeBonuses: lifetimeBonusTotal };
+      return { incomeThisMonth: thisMonth, lifetimeBonuses: lifetimeBonusTotal };
   }, [transactions, currentUser, currentDate]);
 
   const { depositBalance } = useMemo(() => {
@@ -96,7 +114,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
             return {
                 ...inv,
                 name: name,
-                apy: apy,
+                apy: inv.apy || apy, // Prefer snapshot APY
             };
         })
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -206,7 +224,12 @@ const Dashboard: React.FC<DashboardProps> = ({ setView }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card title={t('dashboard.cards.incomeToday')} value={`$${incomeToday.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<DollarSignIcon className="w-6 h-6 text-green-400" />} />
+        <Card 
+            title={t('dashboard.cards.incomeToday')} 
+            value={`$${currentDailyYield.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4})}`} 
+            subtext="Projected Daily Yield" 
+            icon={<DollarSignIcon className="w-6 h-6 text-green-400" />} 
+        />
         <Card title={t('dashboard.cards.incomeMonth')} value={`$${incomeThisMonth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<CalendarIcon className="w-6 h-6 text-blue-400" />} />
         <Card title={t('dashboard.cards.lifetimeBonus')} value={`$${lifetimeBonuses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext="USDT" icon={<TrophyIcon className="w-6 h-6 text-yellow-400" />} />
         <Card title={t('dashboard.cards.totalProfits')} value={`$${totalProfits.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} subtext={t('dashboard.cards.totalProfitsSubtext')} icon={<TrendingUpIcon className="w-6 h-6 text-green-400" />} />
