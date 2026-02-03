@@ -1,4 +1,5 @@
-import React, { createContext, useState, ReactNode, useMemo } from 'react';
+
+import React, { createContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import { locales } from '../locales';
 
 type Locale = keyof typeof locales;
@@ -12,7 +13,16 @@ interface LanguageContextType {
 export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = useState<Locale>(() => {
+    const saved = localStorage.getItem('igi_language');
+    if (saved && Object.keys(locales).includes(saved)) return saved as Locale;
+    return 'en';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('igi_language', locale);
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const value = useMemo(() => ({
     locale,

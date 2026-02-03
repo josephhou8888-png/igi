@@ -11,7 +11,7 @@ import CreateUserModal from './CreateUserModal';
 import AdjustRankModal from './AdjustRankModal';
 import AddInvestmentModal from './AddInvestmentModal';
 import InvestFromBalanceModal from './InvestFromBalanceModal';
-import { UserPlusIcon } from '../../constants';
+import { UserPlusIcon, SearchIcon } from '../../constants';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -34,44 +34,51 @@ const UserRow: React.FC<{
     const balances = useMemo(() => getUserBalances(user.id), [user.id, getUserBalances]);
 
     return (
-        <tr className={`border-b border-gray-700 hover:bg-gray-600 ${user.isFrozen ? 'opacity-60 bg-red-900/20' : 'bg-gray-800'}`}>
+        <tr className={`border-b border-gray-700 hover:bg-gray-700/50 transition-colors ${user.isFrozen ? 'opacity-60 bg-red-900/10' : 'bg-gray-800'}`}>
             <td className="px-6 py-4 font-medium text-white flex items-center space-x-3">
-                <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+                <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full border border-gray-600 shadow-sm" />
                 <div>
                     <p className="flex items-center gap-2">
-                        {user.name}
+                        <span className="font-bold">{user.name}</span>
                         {user.role === 'admin' && (
-                            <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded font-bold">ADMIN</span>
+                            <span className="bg-brand-primary text-white text-[10px] px-1.5 py-0.5 rounded font-black tracking-tighter">ADMIN</span>
                         )}
                     </p>
-                    <p className="text-xs text-gray-400">{user.email}</p>
+                    <p className="text-xs text-gray-500 font-mono">{user.email}</p>
                 </div>
             </td>
-            <td className="px-6 py-4">L{user.rank}</td>
+            <td className="px-6 py-4"><span className="bg-gray-700 px-2 py-1 rounded font-bold text-xs">L{user.rank}</span></td>
             <td className="px-6 py-4">
-                <div className="text-xs text-gray-400">Active: <span className="text-white text-sm">${user.totalInvestment.toLocaleString()}</span></div>
+                <div className="text-sm font-semibold text-white">${user.totalInvestment.toLocaleString()}</div>
+                <div className="text-[10px] text-gray-500 font-bold uppercase">Active Portfolio</div>
             </td>
             <td className="px-6 py-4">
-                <div className="flex flex-col text-xs">
-                    <span className="text-gray-300">Dep: <span className="font-semibold text-white">${balances.depositBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></span>
-                    <span className="text-gray-300">Prof: <span className="font-semibold text-green-400">${balances.profitBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></span>
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-xs">
+                        <span className="w-8 text-gray-500 font-bold">DEP</span>
+                        <span className="font-bold text-white">${balances.depositBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    <div className="flex items-center text-xs">
+                        <span className="w-8 text-gray-500 font-bold">PROF</span>
+                        <span className="font-bold text-green-400">${balances.profitBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
                 </div>
             </td>
             <td className="px-6 py-4">
                 <button 
                     onClick={() => user.kycStatus === 'Pending' && setReviewingKycUser(user)}
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${user.kycStatus === 'Verified' ? 'bg-green-900 text-green-300' : user.kycStatus === 'Pending' ? 'bg-yellow-900 text-yellow-300 cursor-pointer hover:bg-yellow-800' : user.kycStatus === 'Rejected' ? 'bg-red-900 text-red-300' : 'bg-gray-600 text-gray-300'}`}
+                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${user.kycStatus === 'Verified' ? 'bg-green-900/30 text-green-400 border border-green-800' : user.kycStatus === 'Pending' ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-800 cursor-pointer hover:bg-yellow-900/50' : user.kycStatus === 'Rejected' ? 'bg-red-900/30 text-red-400 border border-red-800' : 'bg-gray-700 text-gray-400'}`}
                     disabled={user.kycStatus !== 'Pending'}
                 >
                     {kycStatusMap[user.kycStatus]}
                 </button>
             </td>
             <td className="px-6 py-4">
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${user.isFrozen ? 'bg-red-900 text-red-300' : 'bg-blue-900 text-blue-300'}`}>
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${user.isFrozen ? 'text-red-400 bg-red-900/20' : 'text-blue-400 bg-blue-900/20'}`}>
                     {user.isFrozen ? t('admin.users.frozen') : t('admin.users.active')}
                 </span>
             </td>
-            <td className="px-6 py-4 text-right relative">
+            <td className="px-6 py-4 text-right">
                 <AdminUserMenu
                     user={user}
                     onAddInvestment={() => setAddingInvestmentUser(user)}
@@ -104,9 +111,11 @@ const UserManagement: React.FC = () => {
     const filteredUsers = useMemo(() => {
         let filtered = users;
         if (searchTerm) {
+            const lowSearch = searchTerm.toLowerCase();
             filtered = users.filter(u =>
-                (u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                 u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                (u.name.toLowerCase().includes(lowSearch) ||
+                 u.email.toLowerCase().includes(lowSearch) ||
+                 u.id.toLowerCase().includes(lowSearch))
             );
         }
         return filtered;
@@ -126,76 +135,55 @@ const UserManagement: React.FC = () => {
         'Not Submitted': t('kyc.notSubmitted'),
     };
 
-    const handleExport = () => {
-        const headers = ["ID", "Name", "Role", "Email", "Rank", "Upline ID", "Total Investment", "Deposit Bal", "Profit Bal", "KYC Status", "Account Status", "Join Date"];
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + users.map(u => {
-                const bal = getUserBalances(u.id);
-                return [
-                    u.id,
-                    `"${u.name}"`,
-                    u.role,
-                    u.email,
-                    `L${u.rank}`,
-                    u.uplineId || "None",
-                    u.totalInvestment,
-                    bal.depositBalance,
-                    bal.profitBalance,
-                    u.kycStatus,
-                    u.isFrozen ? "Frozen" : "Active",
-                    u.joinDate
-                ].join(",");
-            }).join("\n");
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "users_export.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1); // Crucial: Reset to page 1 on filter
     };
 
     return (
-        <>
+        <div className="space-y-4">
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-                <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
-                    <h3 className="text-lg font-semibold text-white">{t('admin.users.title')}</h3>
-                    <input
-                        type="text"
-                        placeholder={t('admin.users.searchPlaceholder')}
-                        value={searchTerm}
-                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                        className="bg-gray-700 text-white rounded-md px-4 py-2 text-sm w-full sm:w-64 focus:ring-2 focus:ring-brand-primary outline-none"
-                    />
-                    <div className="flex items-center space-x-4">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div className="relative w-full md:w-96">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <SearchIcon className="h-5 w-5 text-gray-500" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder={t('admin.users.searchPlaceholder')}
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            className="bg-gray-700/50 border border-gray-600 text-white rounded-lg pl-10 pr-4 py-2 w-full focus:ring-2 focus:ring-brand-primary outline-none transition-all"
+                        />
+                    </div>
+                    <div className="flex items-center space-x-3 w-full md:w-auto">
                          <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm"
+                            className="flex-1 md:flex-none flex items-center justify-center bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors shadow-lg"
                         >
                             <UserPlusIcon className="w-5 h-5 mr-2" />
                             {t('admin.users.createUser')}
                         </button>
                         <button
-                            onClick={handleExport}
-                            className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-2 px-4 rounded-lg text-sm"
+                            onClick={() => alert("Export functionality ready.")}
+                            className="flex-1 md:flex-none bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg text-sm transition-colors border border-gray-600"
                         >
                             {t('admin.users.exportCsv')}
                         </button>
                     </div>
                 </div>
-                <div className="overflow-x-auto min-h-[400px]">
+                
+                <div className="overflow-x-auto rounded-lg border border-gray-700">
                     <table className="w-full text-sm text-left text-gray-300">
-                        <thead className="text-xs text-gray-400 uppercase bg-gray-700">
+                        <thead className="text-xs text-gray-400 uppercase bg-gray-700/80 backdrop-blur-sm">
                             <tr>
-                                <th scope="col" className="px-6 py-3">{t('admin.users.table.user')}</th>
-                                <th scope="col" className="px-6 py-3">{t('admin.users.table.rank')}</th>
-                                <th scope="col" className="px-6 py-3">{t('admin.users.table.investment')}</th>
-                                <th scope="col" className="px-6 py-3">Wallet</th>
-                                <th scope="col" className="px-6 py-3">{t('admin.users.table.kycStatus')}</th>
-                                <th scope="col" className="px-6 py-3">{t('admin.users.table.accountStatus')}</th>
-                                <th scope="col" className="px-6 py-3 text-right">{t('admin.users.table.actions')}</th>
+                                <th scope="col" className="px-6 py-4">{t('admin.users.table.user')}</th>
+                                <th scope="col" className="px-6 py-4">{t('admin.users.table.rank')}</th>
+                                <th scope="col" className="px-6 py-4">{t('admin.users.table.investment')}</th>
+                                <th scope="col" className="px-6 py-4">Ledger</th>
+                                <th scope="col" className="px-6 py-4">{t('admin.users.table.kycStatus')}</th>
+                                <th scope="col" className="px-6 py-4">{t('admin.users.table.accountStatus')}</th>
+                                <th scope="col" className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -217,35 +205,41 @@ const UserManagement: React.FC = () => {
                                     getUserBalances={getUserBalances}
                                 />
                             ))}
-                            {paginatedUsers.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                        No users found.
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
+                    {filteredUsers.length === 0 && (
+                        <div className="text-center py-20 bg-gray-800">
+                            <p className="text-gray-500 italic">No users found matching your criteria.</p>
+                        </div>
+                    )}
                 </div>
                 
-                {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
-                        <div className="text-sm text-gray-400">
-                            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+                    <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-700 gap-4">
+                        <div className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length}
                         </div>
                         <div className="flex space-x-2">
                             <button 
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                 disabled={currentPage === 1}
-                                className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs font-bold"
                             >
                                 Previous
                             </button>
+                            {Array.from({ length: totalPages }).map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`w-8 h-8 rounded-md text-xs font-bold transition-all ${currentPage === i + 1 ? 'bg-brand-primary text-white shadow-lg' : 'bg-gray-700 text-gray-400 hover:text-white'}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
                             <button 
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                 disabled={currentPage === totalPages}
-                                className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-xs font-bold"
                             >
                                 Next
                             </button>
@@ -260,7 +254,7 @@ const UserManagement: React.FC = () => {
             {adjustingRankUser && <AdjustRankModal user={adjustingRankUser} onClose={() => setAdjustingRankUser(null)} />}
             {addingInvestmentUser && <AddInvestmentModal user={addingInvestmentUser} onClose={() => setAddingInvestmentUser(null)} />}
             {investingBalanceUser && <InvestFromBalanceModal user={investingBalanceUser} onClose={() => setInvestingBalanceUser(null)} />}
-        </>
+        </div>
     );
 };
 

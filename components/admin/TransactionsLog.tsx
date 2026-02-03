@@ -154,7 +154,8 @@ const TransactionsLog: React.FC = () => {
                   ${event.amount.toLocaleString()}
                 </td>
                 <td className="px-6 py-4 text-gray-400 text-xs break-all max-w-xs">
-                    {event.reason || event.txHash || event.sourceId}
+                    {/* Fix: use optional access or cast to access properties that might not exist on all union members */}
+                    {event.reason || event.txHash || (event as any).sourceId}
                 </td>
               </tr>
             ))}
