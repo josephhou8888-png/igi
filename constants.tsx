@@ -200,15 +200,15 @@ export const INITIAL_TEAM_BUILDER_BONUS_RATES = [
 
 
 export const INITIAL_RANKS: Rank[] = [
-  { level: 1, name: 'L1', minAccounts: 15, newlyQualified: 12, fixedBonus: 500, minTotalInvestment: 15000 },
-  { level: 2, name: 'L2', minAccounts: 30, newlyQualified: 25, fixedBonus: 1000, minTotalInvestment: 50000 },
-  { level: 3, name: 'L3', minAccounts: 50, newlyQualified: 40, fixedBonus: 2000, minTotalInvestment: 100000 },
-  { level: 4, name: 'L4', minAccounts: 100, newlyQualified: 80, fixedBonus: 5000, minTotalInvestment: 250000 },
-  { level: 5, name: 'L5', minAccounts: 250, newlyQualified: 200, fixedBonus: 10000, minTotalInvestment: 500000 },
-  { level: 6, name: 'L6', minAccounts: 500, newlyQualified: 400, fixedBonus: 20000, minTotalInvestment: 1000000 },
-  { level: 7, name: 'L7', minAccounts: 1000, newlyQualified: 800, fixedBonus: 40000, minTotalInvestment: 2500000 },
-  { level: 8, name: 'L8', minAccounts: 2500, newlyQualified: 1000, fixedBonus: 60000, minTotalInvestment: 5000000 },
-  { level: 9, name: 'L9', minAccounts: 10000, newlyQualified: 200, fixedBonus: 100000, minTotalInvestment: 20000000 },
+  { level: 1, name: 'L1', minAccounts: 15, newlyQualified: 12, fixedBonus: 500, minTotalInvestment: 15000, leadershipBonusPercentage: 0.001 },
+  { level: 2, name: 'L2', minAccounts: 30, newlyQualified: 25, fixedBonus: 1000, minTotalInvestment: 50000, leadershipBonusPercentage: 0.002 },
+  { level: 3, name: 'L3', minAccounts: 50, newlyQualified: 40, fixedBonus: 2000, minTotalInvestment: 100000, leadershipBonusPercentage: 0.003 },
+  { level: 4, name: 'L4', minAccounts: 100, newlyQualified: 80, fixedBonus: 5000, minTotalInvestment: 250000, leadershipBonusPercentage: 0.005 },
+  { level: 5, name: 'L5', minAccounts: 250, newlyQualified: 200, fixedBonus: 10000, minTotalInvestment: 500000, leadershipBonusPercentage: 0.008 },
+  { level: 6, name: 'L6', minAccounts: 500, newlyQualified: 400, fixedBonus: 20000, minTotalInvestment: 1000000, leadershipBonusPercentage: 0.01 },
+  { level: 7, name: 'L7', minAccounts: 1000, newlyQualified: 800, fixedBonus: 40000, minTotalInvestment: 2500000, leadershipBonusPercentage: 0.012 },
+  { level: 8, name: 'L8', minAccounts: 2500, newlyQualified: 1000, fixedBonus: 60000, minTotalInvestment: 5000000, leadershipBonusPercentage: 0.015 },
+  { level: 9, name: 'L9', minAccounts: 10000, newlyQualified: 200, fixedBonus: 100000, minTotalInvestment: 20000000, leadershipBonusPercentage: 0.02 },
 ];
 
 // Mock users now include a default password 'password' for authentication simulation

@@ -74,7 +74,13 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
     };
 
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
-        setRankConfig(prev => prev.map(r => r.level === level ? { ...r, [field]: Number(value) } : r));
+        setRankConfig(prev => prev.map(r => {
+            if (r.level === level) {
+                const val = field === 'leadershipBonusPercentage' ? Number(value) / 100 : Number(value);
+                return { ...r, [field]: val };
+            }
+            return r;
+        }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -172,7 +178,7 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
                     <div className="flex justify-between items-center mb-2">
                         <span className="font-bold text-white">Rank {rank.name}</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         <div>
                             <label className="block text-[10px] text-gray-400 mb-1">{t('admin.settings.minAccounts')}</label>
                             <input type="number" value={rank.minAccounts} onChange={e => handleRankChange(rank.level, 'minAccounts', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" />
@@ -188,6 +194,10 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
                         <div>
                             <label className="block text-[10px] text-gray-400 mb-1">Fixed Bonus ($)</label>
                             <input type="number" value={rank.fixedBonus} onChange={e => handleRankChange(rank.level, 'fixedBonus', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] text-gray-400 mb-1">Leadership %</label>
+                            <input type="number" value={rank.leadershipBonusPercentage * 100} onChange={e => handleRankChange(rank.level, 'leadershipBonusPercentage', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" step="0.01" />
                         </div>
                     </div>
                 </div>

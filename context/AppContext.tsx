@@ -901,7 +901,8 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
         legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
         regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smart_contract_address,
+        // Fixed: Use smartContractAddress instead of smart_contract_address
+        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smartContractAddress,
         distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
     });
     if (!error) await refreshData();
@@ -913,10 +914,13 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier,
         asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
         asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate || null, 
-        performance_history: p.performance_history, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
+        // Fixed: Use performanceHistory instead of performance_history
+        performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
         legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
         regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smart_contract_address,
+        // Fixed: Use smartContractAddress instead of smart_contract_address
+        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
+        smart_contract_address: p.smartContractAddress,
         distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
     }).eq('id', p.id);
     if (!error) await refreshData();
@@ -1081,7 +1085,9 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     setLoading(true);
     try {
         await supabase.from('projects').insert(MOCK_PROJECTS.map(p => ({
-            token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier, asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl, asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate, performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership, legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction, regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply, token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smart_contract_address, distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles
+            token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier, asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl, asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate, performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership, legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction, regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply, token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
+            // Fixed: Use smartContractAddress instead of smart_contract_address
+            smart_contract_address: p.smartContractAddress, distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles
         })));
         await supabase.from('investment_pools').insert(MOCK_INVESTMENT_POOLS.map(p => ({ name: p.name, description: p.description, apy: p.apy, min_investment: p.minInvestment })));
         await supabase.from('news').insert(MOCK_NEWS.map(n => ({ title: n.title, content: n.content, date: n.date, author: n.author })));

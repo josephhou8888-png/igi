@@ -14,6 +14,24 @@ interface SidebarProps {
   setIsMobileOpen: (isOpen: boolean) => void;
 }
 
+const NavItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  view: View;
+  isActive: boolean;
+  onClick: (view: View) => void;
+}> = ({ icon, label, view, isActive, onClick }) => (
+  <button
+    onClick={() => onClick(view)}
+    className={`flex items-center w-full px-4 py-3 transition-colors duration-200 ${
+      isActive ? 'bg-brand-primary text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+    }`}
+  >
+    {icon}
+    <span className="ml-4 font-medium">{label}</span>
+  </button>
+);
+
 const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isAdminView, setIsAdminView, isMobileOpen, setIsMobileOpen }) => {
   const { currentUser } = useAppContext();
   const { t } = useLocalization();
@@ -28,23 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isAdminV
     setIsAdminView(true);
     setIsMobileOpen(false);
   }
-
-  const NavItem: React.FC<{
-    icon: React.ReactNode;
-    label: string;
-    view: View;
-    isActive: boolean;
-  }> = ({ icon, label, view, isActive }) => (
-    <button
-      onClick={() => handleNavigation(view)}
-      className={`flex items-center w-full px-4 py-3 transition-colors duration-200 ${
-        isActive && !isAdminView ? 'bg-brand-primary text-white' : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-      }`}
-    >
-      {icon}
-      <span className="ml-4 font-medium">{label}</span>
-    </button>
-  );
 
   return (
     <>
@@ -67,15 +68,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, isAdminV
         </div>
         <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
           <p className="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('sidebar.userPanel')}</p>
-          <NavItem icon={<HomeIcon className="w-6 h-6" />} label={t('sidebar.dashboard')} view={View.DASHBOARD} isActive={currentView === View.DASHBOARD} />
-          <NavItem icon={<BriefcaseIcon className="w-6 h-6" />} label={t('sidebar.projects')} view={View.PROJECTS} isActive={currentView === View.PROJECTS} />
-          <NavItem icon={<DollarSignIcon className="w-6 h-6" />} label={t('sidebar.funds')} view={View.FUNDS} isActive={currentView === View.FUNDS} />
-          <NavItem icon={<NetworkIcon className="w-6 h-6" />} label={t('sidebar.myNetwork')} view={View.NETWORK} isActive={currentView === View.NETWORK} />
-          <NavItem icon={<WalletIcon className="w-6 h-6" />} label={t('sidebar.wallet')} view={View.WALLET} isActive={currentView === View.WALLET} />
-          <NavItem icon={<UserIcon className="w-6 h-6" />} label={t('sidebar.profile')} view={View.PROFILE} isActive={currentView === View.PROFILE} />
-          <NavItem icon={<TrophyIcon className="w-6 h-6" />} label={t('sidebar.leaderboard')} view={View.LEADERBOARD} isActive={currentView === View.LEADERBOARD} />
-          <NavItem icon={<MegaphoneIcon className="w-6 h-6" />} label={t('sidebar.resources')} view={View.RESOURCES} isActive={currentView === View.RESOURCES} />
-          <NavItem icon={<BookOpenIcon className="w-6 h-6" />} label={t('sidebar.userManual')} view={View.USER_MANUAL} isActive={currentView === View.USER_MANUAL} />
+          <NavItem icon={<HomeIcon className="w-6 h-6" />} label={t('sidebar.dashboard')} view={View.DASHBOARD} isActive={currentView === View.DASHBOARD && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<BriefcaseIcon className="w-6 h-6" />} label={t('sidebar.projects')} view={View.PROJECTS} isActive={currentView === View.PROJECTS && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<DollarSignIcon className="w-6 h-6" />} label={t('sidebar.funds')} view={View.FUNDS} isActive={currentView === View.FUNDS && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<NetworkIcon className="w-6 h-6" />} label={t('sidebar.myNetwork')} view={View.NETWORK} isActive={currentView === View.NETWORK && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<WalletIcon className="w-6 h-6" />} label={t('sidebar.wallet')} view={View.WALLET} isActive={currentView === View.WALLET && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<UserIcon className="w-6 h-6" />} label={t('sidebar.profile')} view={View.PROFILE} isActive={currentView === View.PROFILE && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<TrophyIcon className="w-6 h-6" />} label={t('sidebar.leaderboard')} view={View.LEADERBOARD} isActive={currentView === View.LEADERBOARD && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<MegaphoneIcon className="w-6 h-6" />} label={t('sidebar.resources')} view={View.RESOURCES} isActive={currentView === View.RESOURCES && !isAdminView} onClick={handleNavigation} />
+          <NavItem icon={<BookOpenIcon className="w-6 h-6" />} label={t('sidebar.userManual')} view={View.USER_MANUAL} isActive={currentView === View.USER_MANUAL && !isAdminView} onClick={handleNavigation} />
           
           {currentUser && currentUser.role === 'admin' && (
             <>

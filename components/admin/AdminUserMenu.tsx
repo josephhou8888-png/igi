@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { User } from '../../types';
@@ -15,6 +16,23 @@ interface AdminUserMenuProps {
   onAddInvestment: () => void;
   onInvestFromBalance: () => void;
 }
+
+const MenuItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: (e: React.MouseEvent) => void;
+  className?: string;
+}> = ({ icon, label, onClick, className = 'text-gray-300' }) => (
+  <li>
+    <button
+      onClick={onClick}
+      className={`w-full text-left flex items-center px-4 py-2 text-sm hover:bg-gray-600 ${className}`}
+    >
+      {icon}
+      <span className="ml-3">{label}</span>
+    </button>
+  </li>
+);
 
 const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onToggleFreeze, onEdit, onDelete, onChangeRole, onAdjustRank, onAddInvestment, onInvestFromBalance }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,8 +71,6 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
     };
     
     const handleClickOutside = (event: MouseEvent) => {
-      // If we clicked outside the button, we close.
-      // Note: Clicks inside the menu stop propagation (onMouseDown), so they never reach here.
       if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
@@ -72,8 +88,6 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
   }, [isOpen]);
 
   const handleActionClick = (e: React.MouseEvent, action: () => void) => {
-    // e.stopPropagation() is not strictly needed for the document listener due to onMouseDown on container,
-    // but good practice to stop React event bubbling if there were other handlers.
     e.stopPropagation(); 
     setIsOpen(false);
     action();
@@ -85,23 +99,6 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
       onChangeRole(user.id, newRole);
     }
   }
-
-  const MenuItem: React.FC<{
-    icon: React.ReactNode;
-    label: string;
-    onClick: () => void;
-    className?: string;
-  }> = ({ icon, label, onClick, className = 'text-gray-300' }) => (
-    <li>
-      <button
-        onClick={(e) => handleActionClick(e, onClick)}
-        className={`w-full text-left flex items-center px-4 py-2 text-sm hover:bg-gray-600 ${className}`}
-      >
-        {icon}
-        <span className="ml-3">{label}</span>
-      </button>
-    </li>
-  );
 
   return (
     <>
@@ -117,7 +114,6 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
         <div 
             className="absolute z-[9999] w-56 rounded-md shadow-lg bg-gray-700 ring-1 ring-black ring-opacity-5"
             style={{ top: menuPosition.top, left: menuPosition.left }}
-            // Stop mousedown propagation so document listener doesn't fire when clicking inside menu
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
         >
@@ -125,49 +121,49 @@ const AdminUserMenu: React.FC<AdminUserMenuProps> = ({ user, onAdjustWallet, onT
             <MenuItem
               icon={<PlusCircleIcon className="w-5 h-5 text-teal-400" />}
               label={t('admin.userMenu.addInvestment')}
-              onClick={onAddInvestment}
+              onClick={(e) => handleActionClick(e, onAddInvestment)}
               className="text-teal-400"
             />
             <MenuItem
               icon={<WalletIcon className="w-5 h-5 text-blue-400" />}
               label={t('admin.userMenu.investFromWallet')}
-              onClick={onInvestFromBalance}
+              onClick={(e) => handleActionClick(e, onInvestFromBalance)}
               className="text-blue-400"
             />
             <MenuItem
               icon={<DollarSignIcon className="w-5 h-5 text-green-400" />}
               label={t('admin.userMenu.adjustWallet')}
-              onClick={onAdjustWallet}
+              onClick={(e) => handleActionClick(e, onAdjustWallet)}
               className="text-green-400"
             />
             <MenuItem
               icon={<AwardIcon className="w-5 h-5 text-yellow-400" />}
               label={t('admin.userMenu.adjustRank')}
-              onClick={onAdjustRank}
+              onClick={(e) => handleActionClick(e, onAdjustRank)}
               className="text-yellow-400"
             />
             <MenuItem
               icon={<ShieldIcon className="w-5 h-5 text-purple-400" />}
               label={user.role === 'admin' ? t('admin.userMenu.demoteToUser') : t('admin.userMenu.promoteToAdmin')}
-              onClick={handleChangeRole}
+              onClick={(e) => handleActionClick(e, handleChangeRole)}
               className="text-purple-400"
             />
             <MenuItem
               icon={user.isFrozen ? <ZapOffIcon className="w-5 h-5 text-blue-400" /> : <ZapIcon className="w-5 h-5 text-orange-400" />}
               label={user.isFrozen ? t('admin.userMenu.unfreezeAccount') : t('admin.userMenu.freezeAccount')}
-              onClick={onToggleFreeze}
+              onClick={(e) => handleActionClick(e, onToggleFreeze)}
               className={user.isFrozen ? 'text-blue-400' : 'text-orange-400'}
             />
             <MenuItem
               icon={<EditIcon className="w-5 h-5 text-cyan-400" />}
               label={t('admin.userMenu.editUser')}
-              onClick={onEdit}
+              onClick={(e) => handleActionClick(e, onEdit)}
               className="text-cyan-400"
             />
              <MenuItem
               icon={<TrashIcon className="w-5 h-5 text-red-400" />}
               label={t('admin.userMenu.deleteUser')}
-              onClick={onDelete}
+              onClick={(e) => handleActionClick(e, onDelete)}
               className="text-red-400"
             />
           </ul>

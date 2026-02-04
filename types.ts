@@ -136,6 +136,7 @@ export interface Rank {
   newlyQualified: number;
   fixedBonus: number;
   minTotalInvestment: number;
+  leadershipBonusPercentage: number; // Percentage of downline turnover
 }
 
 export interface NewsPost {

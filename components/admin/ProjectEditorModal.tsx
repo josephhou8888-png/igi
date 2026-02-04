@@ -11,6 +11,55 @@ interface ProjectEditorModalProps {
 
 type Tab = 'general' | 'bonuses' | 'ranks';
 
+// Helper components moved OUTSIDE to prevent re-mounting on state updates
+const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div>
+        <h3 className="text-lg font-semibold text-brand-primary mb-3">{title}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
+    </div>
+);
+
+const FormInput: React.FC<{ 
+    name: string, 
+    label: string, 
+    value: string | number, 
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
+    type?: string, 
+    required?: boolean 
+}> = ({ name, label, value, onChange, type='text', required=true }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-300">{label}</label>
+        <input 
+            type={type} 
+            name={name} 
+            value={String(value || '')} 
+            onChange={onChange} 
+            className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" 
+            required={required} 
+        />
+    </div>
+);
+
+const FormTextarea: React.FC<{ 
+    name: string, 
+    label: string, 
+    value: string, 
+    onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void,
+    required?: boolean 
+}> = ({ name, label, value, onChange, required=true }) => (
+    <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-300">{label}</label>
+        <textarea 
+            name={name} 
+            value={value || ''} 
+            onChange={onChange} 
+            rows={2} 
+            className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" 
+            required={required} 
+        />
+    </div>
+);
+
 const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, onClose }) => {
     const { addProject, updateProject, currentDate, ranks: globalRanks, instantBonusRates: globalInstant, teamBuilderBonusRates: globalTeam } = useAppContext();
     const { t } = useLocalization();
@@ -74,7 +123,13 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
     };
 
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
-        setRankConfig(prev => prev.map(r => r.level === level ? { ...r, [field]: Number(value) } : r));
+        setRankConfig(prev => prev.map(r => {
+            if (r.level === level) {
+                const val = field === 'leadershipBonusPercentage' ? Number(value) / 100 : Number(value);
+                return { ...r, [field]: val };
+            }
+            return r;
+        }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -86,51 +141,30 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
         };
 
         if (projectToEdit) {
-            updateProject({ ...projectToEdit, ...projectData });
+            updateProject({ ...projectToEdit, ...projectData } as Project);
         } else {
             addProject(projectData);
         }
         onClose();
     };
 
-    const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-        <div>
-            <h3 className="text-lg font-semibold text-brand-primary mb-3">{title}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{children}</div>
-        </div>
-    );
-    
-    const FormInput: React.FC<{ name: keyof typeof formData, label: string, type?: string, required?: boolean }> = ({ name, label, type='text', required=true }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-300">{label}</label>
-            <input type={type} name={name} value={String(formData[name] || '')} onChange={handleChange} className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" required={required} />
-        </div>
-    );
-    
-    const FormTextarea: React.FC<{ name: keyof typeof formData, label: string, required?: boolean }> = ({ name, label, required=true }) => (
-        <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-300">{label}</label>
-            <textarea name={name} value={String(formData[name] || '')} onChange={handleChange} rows={2} className="w-full bg-gray-700 text-white rounded-md mt-1 px-3 py-2 text-sm" required={required} />
-        </div>
-    );
-
     const renderGeneralTab = () => (
         <div className="space-y-6">
             <FormSection title={t('projectDetail.assetDetails')}>
-                <FormInput name="tokenName" label="Token Name" />
-                <FormInput name="tokenTicker" label="Token Ticker (e.g. MSOT)" />
-                <FormInput name="assetType" label={t('projectDetail.assetType')} />
-                <FormInput name="assetLocation" label={t('projectDetail.location')} />
-                <FormInput name="assetImageUrl" label="Asset Image URL" />
-                <FormTextarea name="assetDescription" label="Asset Description" />
+                <FormInput name="tokenName" label="Token Name" value={formData.tokenName || ''} onChange={handleChange} />
+                <FormInput name="tokenTicker" label="Token Ticker (e.g. MSOT)" value={formData.tokenTicker || ''} onChange={handleChange} />
+                <FormInput name="assetType" label={t('projectDetail.assetType')} value={formData.assetType || ''} onChange={handleChange} />
+                <FormInput name="assetLocation" label={t('projectDetail.location')} value={formData.assetLocation || ''} onChange={handleChange} />
+                <FormInput name="assetImageUrl" label="Asset Image URL" value={formData.assetImageUrl || ''} onChange={handleChange} />
+                <FormTextarea name="assetDescription" label="Asset Description" value={formData.assetDescription || ''} onChange={handleChange} />
             </FormSection>
 
             <FormSection title={t('projectDetail.financials')}>
-                <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} type="number" />
-                <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} type="number" />
-                <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} type="number" />
-                <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} type="number" />
-                <FormInput name="totalTokenSupply" label="Total Token Supply" type="number" />
+                <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} value={formData.assetValuation || 0} onChange={handleChange} type="number" />
+                <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} value={formData.expectedYield || 0} onChange={handleChange} type="number" />
+                <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} value={formData.minInvestment || 0} onChange={handleChange} type="number" />
+                <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} value={formData.tokenPrice || 0} onChange={handleChange} type="number" />
+                <FormInput name="totalTokenSupply" label="Total Token Supply" value={formData.totalTokenSupply || 0} onChange={handleChange} type="number" />
             </FormSection>
         </div>
     );
@@ -177,7 +211,7 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                     <div className="flex justify-between items-center mb-2">
                         <span className="font-bold text-white">Rank {rank.name}</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                         <div>
                             <label className="block text-[10px] text-gray-400 mb-1">{t('admin.settings.minAccounts')}</label>
                             <input type="number" value={rank.minAccounts} onChange={e => handleRankChange(rank.level, 'minAccounts', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" />
@@ -193,6 +227,10 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                         <div>
                             <label className="block text-[10px] text-gray-400 mb-1">Fixed Bonus ($)</label>
                             <input type="number" value={rank.fixedBonus} onChange={e => handleRankChange(rank.level, 'fixedBonus', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] text-gray-400 mb-1">Leadership %</label>
+                            <input type="number" value={rank.leadershipBonusPercentage * 100} onChange={e => handleRankChange(rank.level, 'leadershipBonusPercentage', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs" step="0.01" />
                         </div>
                     </div>
                 </div>

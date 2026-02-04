@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
@@ -37,7 +38,9 @@ const PlatformSettings: React.FC = () => {
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
         const updatedRanks = localRanks.map(rank => {
             if (rank.level === level) {
-                return { ...rank, [field]: Number(value) };
+                // If it's a percentage field, convert from input percentage to decimal
+                const val = field === 'leadershipBonusPercentage' ? Number(value) / 100 : Number(value);
+                return { ...rank, [field]: val };
             }
             return rank;
         });
@@ -190,17 +193,17 @@ const PlatformSettings: React.FC = () => {
                         <h4 className="font-semibold text-brand-primary mb-2">{t('admin.settings.instantBonus')}</h4>
                         <div className="space-y-3">
                             <div className="flex items-center">
-                                <label className="w-24 text-sm text-gray-300">{t('admin.settings.investor')}</label>
+                                <label className="w-32 text-sm text-gray-300">{t('admin.settings.investor')}</label>
                                 <input type="number" value={localInstantRates.investor * 100} onChange={e => handleInstantRateChange('investor', e.target.value)} className="w-24 bg-gray-700 text-white rounded-md px-2 py-1 text-sm" step="0.1" />
                                 <span className="ml-2 text-gray-400">%</span>
                             </div>
                             <div className="flex items-center">
-                                <label className="w-24 text-sm text-gray-300">{t('admin.settings.referrer')}</label>
+                                <label className="w-32 text-sm text-gray-300">{t('admin.settings.referrer')}</label>
                                 <input type="number" value={localInstantRates.referrer * 100} onChange={e => handleInstantRateChange('referrer', e.target.value)} className="w-24 bg-gray-700 text-white rounded-md px-2 py-1 text-sm" step="0.1" />
                                 <span className="ml-2 text-gray-400">%</span>
                             </div>
                             <div className="flex items-center">
-                                <label className="w-24 text-sm text-gray-300">{t('admin.settings.uplineL1')}</label>
+                                <label className="w-32 text-sm text-gray-300">{t('admin.settings.uplineL1')}</label>
                                 <input type="number" value={localInstantRates.upline * 100} onChange={e => handleInstantRateChange('upline', e.target.value)} className="w-24 bg-gray-700 text-white rounded-md px-2 py-1 text-sm" step="0.1" />
                                 <span className="ml-2 text-gray-400">%</span>
                             </div>
@@ -225,15 +228,15 @@ const PlatformSettings: React.FC = () => {
                 <h3 className="text-lg font-semibold text-white mb-4">{t('admin.settings.rankConfigTitle')}</h3>
                 <div className="space-y-4">
                     {localRanks.sort((a,b) => a.level - b.level).map(rank => (
-                        <div key={rank.level} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center p-3 bg-gray-700 rounded-md">
-                            <div className="font-bold text-white text-lg">{rank.name}</div>
+                        <div key={rank.level} className="grid grid-cols-2 md:grid-cols-6 gap-4 items-end p-4 bg-gray-700 rounded-md">
+                            <div className="col-span-2 md:col-span-1 font-bold text-white text-lg">{rank.name}</div>
                             <div>
                                 <label className="block text-xs text-gray-400">{t('admin.settings.minAccounts')}</label>
                                 <input
                                     type="number"
                                     value={rank.minAccounts}
                                     onChange={(e) => handleRankChange(rank.level, 'minAccounts', e.target.value)}
-                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
+                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5 text-sm"
                                 />
                             </div>
                             <div>
@@ -242,26 +245,39 @@ const PlatformSettings: React.FC = () => {
                                     type="number"
                                     value={rank.newlyQualified}
                                     onChange={(e) => handleRankChange(rank.level, 'newlyQualified', e.target.value)}
-                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
+                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5 text-sm"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400">{t('admin.settings.minTotalInvestment')}</label>
+                                <label className="block text-xs text-gray-400">{t('admin.settings.minTotalInvestment')} ($)</label>
                                 <input
                                     type="number"
                                     value={rank.minTotalInvestment}
                                     onChange={(e) => handleRankChange(rank.level, 'minTotalInvestment', e.target.value)}
-                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
+                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5 text-sm"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-gray-400">{t('admin.settings.fixedBonus')}</label>
+                                <label className="block text-xs text-gray-400">{t('admin.settings.fixedBonus')} ($)</label>
                                 <input
                                     type="number"
                                     value={rank.fixedBonus}
                                     onChange={(e) => handleRankChange(rank.level, 'fixedBonus', e.target.value)}
-                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5"
+                                    className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5 text-sm"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400">Leadership %</label>
+                                <div className="flex items-center">
+                                    <input
+                                        type="number"
+                                        value={rank.leadershipBonusPercentage * 100}
+                                        onChange={(e) => handleRankChange(rank.level, 'leadershipBonusPercentage', e.target.value)}
+                                        className="w-full bg-gray-600 text-white rounded-md mt-1 px-3 py-1.5 text-sm"
+                                        step="0.01"
+                                    />
+                                    <span className="ml-1 text-gray-400">%</span>
+                                </div>
                             </div>
                         </div>
                     ))}
