@@ -207,8 +207,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
       if (projData) setProjects(projData.map(p => ({
           id: p.id,
-          tokenName: sanitizeString(p.token_name, 'Token'),
-          tokenTicker: sanitizeString(p.token_ticker, 'TKN'),
+          tokenName: sanitizeString(p.token_name, 'Project'),
+          tokenTicker: p.token_ticker || 'TKN',
           assetType: p.asset_type || '',
           assetIdentifier: p.asset_identifier || '',
           assetDescription: p.asset_description || '',
@@ -396,21 +396,15 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
         return; 
     } 
-    // FIXED: Only include 'Core' columns to avoid errors if extended columns like 'asset_custodian' are missing from DB
+    // FIXED: Using a minimalist column set to avoid "Column not found" errors in standard Supabase tables
     const { error } = await supabase.from('projects').insert({
         token_name: p.tokenName, 
-        token_ticker: p.tokenTicker, 
         asset_type: p.assetType, 
         asset_description: p.assetDescription, 
         asset_image_url: p.assetImageUrl,
         asset_valuation: p.assetValuation, 
         expected_yield: p.expectedYield, 
-        total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, 
-        min_investment: p.minInvestment, 
-        blockchain: p.blockchain, 
-        custom_bonus_config: p.customBonusConfig, 
-        custom_rank_config: p.customRankConfig
+        min_investment: p.minInvestment
     });
     if (error) { 
         console.error("Error adding project:", error); 
@@ -421,21 +415,15 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const updateProject = useCallback(async (p: Project) => {
     if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
-    // FIXED: Only update 'Core' columns for resilience
+    // FIXED: Using a minimalist column set for the update as well
     const { error } = await supabase.from('projects').update({
         token_name: p.tokenName, 
-        token_ticker: p.tokenTicker, 
         asset_type: p.assetType, 
         asset_description: p.assetDescription, 
         asset_image_url: p.assetImageUrl,
         asset_valuation: p.assetValuation, 
         expected_yield: p.expectedYield, 
-        total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, 
-        min_investment: p.minInvestment, 
-        blockchain: p.blockchain, 
-        custom_bonus_config: p.customBonusConfig, 
-        custom_rank_config: p.customRankConfig
+        min_investment: p.minInvestment
     }).eq('id', p.id);
     if (error) { 
         console.error("Error updating project:", error); 
@@ -620,7 +608,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const updateRankSettings = useCallback((r: Rank[]) => setRanks(r), []);
   const addManualTransaction = useCallback(async (userId: string, type: any, amount: number, reason: string) => { if (supabase) await supabase.from('transactions').insert({ user_id: userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` }); await refreshData(); }, [currentDate, refreshData]);
   const addNewsPost = useCallback(async (post: any) => { if (supabase) await supabase.from('news').insert(post); await refreshData(); }, [refreshData]);
-  const deleteNewsPost = useCallback(async (id: string) => { if (supabase) await supabase.from('news').delete().eq('id', id); await refreshData(); }, [refreshData]);
+  const deleteNewsPost = useCallback(async (id: string) => { if (supabase) await supabase.from('news').delete().eq('id', id); await refreshData(); } , [refreshData]);
   const adjustUserRank = useCallback(async (userId: string, newRank: number, reason: string) => { if (supabase) await supabase.from('profiles').update({ rank: newRank }).eq('id', userId); await refreshData(); }, [refreshData]);
   const connectSolanaWallet = useCallback(async () => { if (window.solana) { try { const r = await window.solana.connect(); setSolanaWalletAddress(r.publicKey.toString()); } catch (err) {} } }, []);
   const disconnectSolanaWallet = useCallback(() => { if (window.solana) window.solana.disconnect(); setSolanaWalletAddress(null); }, []);
