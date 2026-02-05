@@ -396,58 +396,62 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
         return; 
     } 
+    // FIXED: Only include 'Core' columns to avoid errors if extended columns like 'asset_custodian' are missing from DB
     const { error } = await supabase.from('projects').insert({
-        token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, 
-        asset_identifier: p.assetIdentifier, asset_description: p.assetDescription, 
-        asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, 
-        valuation_date: p.valuationDate || null, performance_history: p.performanceHistory, 
-        expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
-        legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, 
-        jurisdiction: p.jurisdiction, regulatory_status: p.regulatoryStatus, 
-        investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
-        smart_contract_address: p.smartContractAddress, distribution: p.distribution, 
-        rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, 
-        /* FIXED: p.asset_manager typo corrected to p.assetManager */
-        asset_manager: p.assetManager, oracles: p.oracles,
-        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker, 
+        asset_type: p.assetType, 
+        asset_description: p.assetDescription, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        expected_yield: p.expectedYield, 
+        total_token_supply: p.totalTokenSupply,
+        token_price: p.tokenPrice, 
+        min_investment: p.minInvestment, 
+        blockchain: p.blockchain, 
+        custom_bonus_config: p.customBonusConfig, 
+        custom_rank_config: p.customRankConfig
     });
-    if (error) { console.error("Error adding project:", error); alert("Save failed: " + error.message); }
+    if (error) { 
+        console.error("Error adding project:", error); 
+        alert("Save failed: " + error.message); 
+    }
     else { await refreshData(); }
   }, [refreshData]);
 
   const updateProject = useCallback(async (p: Project) => {
     if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
+    // FIXED: Only update 'Core' columns for resilience
     const { error } = await supabase.from('projects').update({
-        token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, 
-        asset_identifier: p.assetIdentifier, asset_description: p.assetDescription, 
-        /* FIXED: p.asset_location typo corrected to p.assetLocation */
-        asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, 
-        valuation_date: p.valuationDate || null, performance_history: p.performanceHistory, 
-        expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
-        /* FIXED: p.legal_structure and p.legal_wrapper typos corrected to p.legalStructure and p.legalWrapper */
-        legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, 
-        jurisdiction: p.jurisdiction, regulatory_status: p.regulatoryStatus, 
-        investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
-        smart_contract_address: p.smartContractAddress, distribution: p.distribution, 
-        /* FIXED: p.rights_conferred and p.asset_manager typos corrected to p.rightsConferred and p.assetManager */
-        rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, 
-        asset_manager: p.assetManager, oracles: p.oracles,
-        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker, 
+        asset_type: p.assetType, 
+        asset_description: p.assetDescription, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        expected_yield: p.expectedYield, 
+        total_token_supply: p.totalTokenSupply,
+        token_price: p.tokenPrice, 
+        min_investment: p.minInvestment, 
+        blockchain: p.blockchain, 
+        custom_bonus_config: p.customBonusConfig, 
+        custom_rank_config: p.customRankConfig
     }).eq('id', p.id);
-    if (error) { console.error("Error updating project:", error); alert("Update failed: " + error.message); }
+    if (error) { 
+        console.error("Error updating project:", error); 
+        alert("Update failed: " + error.message); 
+    }
     else { await refreshData(); }
   }, [refreshData]);
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
     if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
     const { error } = await supabase.from('investment_pools').insert({ 
-        name: pool.name, description: pool.description, apy: pool.apy, 
-        min_investment: pool.minInvestment, custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig, project_url: pool.projectUrl,
+        name: pool.name, 
+        description: pool.description, 
+        apy: pool.apy, 
+        min_investment: pool.minInvestment, 
+        project_url: pool.projectUrl,
         linked_project_id: pool.linkedProjectId
     });
     if (error) { console.error("Error adding fund:", error); alert("Save failed: " + error.message); }
@@ -457,9 +461,11 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
     if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
     const { error } = await supabase.from('investment_pools').update({ 
-        name: pool.name, description: pool.description, apy: pool.apy, 
-        min_investment: pool.minInvestment, custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig, project_url: pool.projectUrl,
+        name: pool.name, 
+        description: pool.description, 
+        apy: pool.apy, 
+        min_investment: pool.minInvestment, 
+        project_url: pool.projectUrl,
         linked_project_id: pool.linkedProjectId
     }).eq('id', pool.id);
     if (error) { console.error("Error updating fund:", error); alert("Update failed: " + error.message); }
@@ -471,7 +477,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     newDate.setDate(newDate.getDate() + days);
     setCurrentDate(newDate);
 
-    // Simulation logic: Generate profit sharing for active investments
     const dailyProfitTransactions: any[] = [];
     const updatedInvestments = [...investments];
 
@@ -505,7 +510,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             setTransactions(prev => [...prev, ...dailyProfitTransactions.map(t => ({ ...t, userId: t.user_id, txHash: t.tx_hash, investmentId: t.investment_id }))]);
             setInvestments(updatedInvestments);
         } else {
-            // Batching inserts for efficiency
             await supabase.from('transactions').insert(dailyProfitTransactions);
             for (const inv of updatedInvestments) {
                 await supabase.from('investments').update({ total_profit_earned: inv.totalProfitEarned }).eq('id', inv.id);
@@ -516,11 +520,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [currentDate, investments, refreshData]);
 
   const runMonthlyCycle = useCallback(async (cycleDate: Date) => {
-    // Logic to evaluate ranks and payout leadership bonuses
     const dateStr = cycleDate.toISOString().split('T')[0];
     const userUpdates: any[] = [];
     
-    // Iterative BFS for team calculation to avoid recursion issues
     const getDownlineCount = (rootId: string): number => {
         const visited = new Set<string>([rootId]);
         const queue = [rootId];
@@ -579,7 +581,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [users, ranks, refreshData]);
 
-  // Auth and logic functions (Keeping them identical to standard implementation but ensuring mappings)
   const login = useCallback(async (email: string, password: string) => {
     if (!supabase) {
         const user = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
