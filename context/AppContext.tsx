@@ -305,6 +305,15 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   useEffect(() => { if (!supabase) setStoredData('igi_demo_investments', investments) }, [investments]);
   useEffect(() => { if (!supabase) setStoredData('igi_demo_transactions', transactions) }, [transactions]);
 
+  // Persist Administrative Settings
+  useEffect(() => setStoredData('igi_ranks', ranks), [ranks]);
+  useEffect(() => setStoredData('igi_instantRates', instantBonusRates), [instantBonusRates]);
+  useEffect(() => setStoredData('igi_teamRates', teamBuilderBonusRates), [teamBuilderBonusRates]);
+  useEffect(() => setStoredData('igi_wallets', treasuryWallets), [treasuryWallets]);
+  useEffect(() => setStoredData('igi_socials', socialLinks), [socialLinks]);
+  useEffect(() => setStoredData('igi_withdrawalLimit', withdrawalLimit), [withdrawalLimit]);
+  useEffect(() => setStoredData('igi_minWithdrawalLimit', minWithdrawalLimit), [minWithdrawalLimit]);
+
   const getUserBalances = useCallback((userId: string) => {
       const userTransactions = transactions.filter(t => t.userId === userId);
       const userInvestments = investments.filter(i => i.userId === userId);

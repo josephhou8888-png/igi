@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
+import { useToast } from '../../hooks/useToast';
 import { Rank, TreasuryWallets, PlatformSocialLinks } from '../../types';
 import { TelegramIcon, WhatsAppIcon, TwitterIcon, FacebookIcon, InstagramIcon, YoutubeIcon, DiscordIcon } from '../../constants';
 
@@ -17,6 +18,8 @@ const PlatformSettings: React.FC = () => {
         seedDatabase, isDemoMode
     } = useAppContext();
     const { t } = useLocalization();
+    const { addToast } = useToast();
+    
     const [localRanks, setLocalRanks] = useState<Rank[]>(ranks);
     const [localInstantRates, setLocalInstantRates] = useState(instantBonusRates);
     const [localTeamRates, setLocalTeamRates] = useState(teamBuilderBonusRates);
@@ -38,7 +41,6 @@ const PlatformSettings: React.FC = () => {
     const handleRankChange = (level: number, field: keyof Rank, value: string) => {
         const updatedRanks = localRanks.map(rank => {
             if (rank.level === level) {
-                // If it's a percentage field, convert from input percentage to decimal
                 const val = field === 'leadershipBonusPercentage' ? Number(value) / 100 : Number(value);
                 return { ...rank, [field]: val };
             }
@@ -72,6 +74,7 @@ const PlatformSettings: React.FC = () => {
         updateSocialLinks(localSocialLinks);
         updateWithdrawalLimit(localWithdrawalLimit);
         updateMinWithdrawalLimit(localMinWithdrawalLimit);
+        addToast('All settings saved successfully!', 'success');
     };
 
     const handleRunCycle = () => {
@@ -79,6 +82,7 @@ const PlatformSettings: React.FC = () => {
         cycleDate.setDate(cycleDate.getDate() - 1); // Get last day of previous month
         if(window.confirm(t('admin.settings.confirmRunCycle', { month: cycleDate.toLocaleString('default', { month: 'long', year: 'numeric' }) }))) {
             runMonthlyCycle(cycleDate);
+            addToast('Monthly cycle processed.', 'info');
         }
     }
 
