@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
 import { Project, BonusConfig, Rank } from '../../types';
+import { CameraIcon } from '../../constants';
 
 interface ProjectEditorModalProps {
     projectToEdit: Project | null;
@@ -71,6 +72,8 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
     const { t } = useLocalization();
     const [activeTab, setActiveTab] = useState<Tab>('general');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const getInitialState = (): Partial<Omit<Project, 'id'>> => {
         if (projectToEdit) return { ...projectToEdit };
@@ -103,6 +106,28 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? Number(value) : value }));
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            if (file.size > 2 * 1024 * 1024) {
+                alert("Image size must be less than 2MB");
+                return;
+            }
+
+            setIsUploading(true);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData(prev => ({ ...prev, assetImageUrl: reader.result as string }));
+                setIsUploading(false);
+            };
+            reader.onerror = () => {
+                alert("Error reading file");
+                setIsUploading(false);
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleBonusChange = (section: 'instant' | 'teamBuilder', key: string | number, value: string) => {
@@ -184,7 +209,49 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                                     <FormInput name="tokenTicker" label="Token Ticker" value={formData.tokenTicker || ''} onChange={handleChange} />
                                     <FormInput name="assetType" label={t('projectDetail.assetType')} value={formData.assetType || ''} onChange={handleChange} />
                                     <FormInput name="assetLocation" label={t('projectDetail.location')} value={formData.assetLocation || ''} onChange={handleChange} />
-                                    <FormInput name="assetImageUrl" label="Asset Image URL" value={formData.assetImageUrl || ''} onChange={handleChange} />
+                                    
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Asset Image</label>
+                                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                                            <div className="relative group w-full sm:w-48 h-32 bg-gray-700 rounded-lg overflow-hidden border-2 border-dashed border-gray-600 hover:border-brand-primary transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                                {formData.assetImageUrl ? (
+                                                    <img src={formData.assetImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+                                                        <CameraIcon className="w-8 h-8 mb-2" />
+                                                        <span className="text-[10px] uppercase font-bold">Upload Image</span>
+                                                    </div>
+                                                )}
+                                                {isUploading && (
+                                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <span className="text-white text-[10px] font-bold uppercase">Change Image</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex-1 w-full space-y-2">
+                                                <input 
+                                                    type="file" 
+                                                    ref={fileInputRef} 
+                                                    className="hidden" 
+                                                    accept="image/*" 
+                                                    onChange={handleFileChange} 
+                                                />
+                                                <FormInput 
+                                                    name="assetImageUrl" 
+                                                    label="Or Manual Image URL" 
+                                                    value={formData.assetImageUrl || ''} 
+                                                    onChange={handleChange} 
+                                                    required={false}
+                                                />
+                                                <p className="text-[10px] text-gray-500 italic">Recommended size: 1200x800px. Max file size: 2MB.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <FormTextarea name="assetDescription" label="Asset Description" value={formData.assetDescription || ''} onChange={handleChange} />
                                     <FormInput name="blockchain" label={t('projectDetail.blockchain')} value={formData.blockchain || ''} onChange={handleChange} />
                                 </FormSection>
