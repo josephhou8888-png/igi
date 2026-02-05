@@ -893,75 +893,148 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
   }, [currentDate, investments, projects, investmentPools, refreshData]);
 
   const addProject = useCallback(async (p: Partial<Omit<Project, 'id'>>) => {
-    if (!supabase) { setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); return; } 
+    if (!supabase) { 
+        setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
+        return; 
+    } 
     const { error } = await supabase.from('projects').insert({
-        token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier,
-        asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate || null, 
-        performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
-        legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
-        regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smartContractAddress,
-        distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
-        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker, 
+        asset_type: p.assetType, 
+        asset_identifier: p.assetIdentifier,
+        asset_description: p.assetDescription, 
+        asset_location: p.assetLocation, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        valuation_method: p.valuationMethod, 
+        valuation_date: p.valuationDate || null, 
+        performance_history: p.performanceHistory, 
+        expected_yield: p.expectedYield, 
+        proof_of_ownership: p.proofOfOwnership,
+        legal_structure: p.legalStructure, 
+        legal_wrapper: p.legalWrapper, 
+        jurisdiction: p.jurisdiction,
+        regulatory_status: p.regulatoryStatus, 
+        investor_requirements: p.investorRequirements, 
+        total_token_supply: p.totalTokenSupply,
+        token_price: p.tokenPrice, 
+        min_investment: p.minInvestment, 
+        blockchain: p.blockchain, 
+        smart_contract_address: p.smartContractAddress,
+        distribution: p.distribution, 
+        rights_conferred: p.rightsConferred, 
+        asset_custodian: p.assetCustodian, 
+        asset_manager: p.assetManager, 
+        oracles: p.oracles,
+        custom_bonus_config: p.customBonusConfig, 
+        custom_rank_config: p.customRankConfig
     });
-    if (error) console.error("Error adding project:", error);
-    else await refreshData();
+    if (error) {
+        console.error("Error adding project:", error);
+    } else {
+        await refreshData();
+    }
   }, [refreshData]);
 
   const updateProject = useCallback(async (p: Project) => {
-    if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
+    if (!supabase) { 
+        setProjects(prev => prev.map(x => x.id === p.id ? p : x)); 
+        return; 
+    }
     const { error } = await supabase.from('projects').update({
-        token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier,
-        asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate || null, 
-        performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
-        legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
-        regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker, 
+        asset_type: p.assetType, 
+        asset_identifier: p.assetIdentifier,
+        asset_description: p.assetDescription, 
+        asset_location: p.assetLocation, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        valuation_method: p.valuationMethod, 
+        valuation_date: p.valuationDate || null, 
+        performance_history: p.performanceHistory, 
+        expected_yield: p.expectedYield, 
+        proof_of_ownership: p.proofOfOwnership,
+        legal_structure: p.legalStructure, 
+        legal_wrapper: p.legalWrapper, 
+        jurisdiction: p.jurisdiction,
+        regulatory_status: p.regulatoryStatus, 
+        investor_requirements: p.investorRequirements, 
+        total_token_supply: p.totalTokenSupply,
+        token_price: p.tokenPrice, 
+        min_investment: p.minInvestment, 
+        blockchain: p.blockchain, 
         smart_contract_address: p.smartContractAddress,
-        distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
-        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
+        distribution: p.distribution, 
+        rights_conferred: p.rightsConferred, 
+        asset_custodian: p.assetCustodian, 
+        asset_manager: p.assetManager, 
+        oracles: p.oracles,
+        custom_bonus_config: p.customBonusConfig, 
+        custom_rank_config: p.customRankConfig
     }).eq('id', p.id);
-    if (error) console.error("Error updating project:", error);
-    else await refreshData();
+    if (error) {
+        console.error("Error updating project:", error);
+    } else {
+        await refreshData();
+    }
   }, [refreshData]);
 
   const deleteProject = useCallback(async (id: string) => {
       if (!supabase) { setProjects(prev => prev.filter(p => p.id !== id)); return; }
-      await supabase.from('projects').delete().eq('id', id);
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) console.error("Error deleting project:", error);
       await refreshData();
   }, [refreshData]);
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
-    if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
-    await supabase.from('investment_pools').insert({ 
+    if (!supabase) { 
+        setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); 
+        return; 
+    }
+    const { error } = await supabase.from('investment_pools').insert({ 
         name: pool.name, 
         description: pool.description, 
         apy: pool.apy, 
         min_investment: pool.minInvestment,
         custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig
+        custom_rank_config: pool.customRankConfig,
+        project_url: pool.projectUrl,
+        linked_project_id: pool.linkedProjectId
     });
-    await refreshData();
+    if (error) {
+        console.error("Error adding fund:", error);
+    } else {
+        await refreshData();
+    }
   }, [refreshData]);
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
-    if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
-    await supabase.from('investment_pools').update({ 
+    if (!supabase) { 
+        setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); 
+        return; 
+    }
+    const { error } = await supabase.from('investment_pools').update({ 
         name: pool.name, 
         description: pool.description, 
         apy: pool.apy, 
         min_investment: pool.minInvestment,
         custom_bonus_config: pool.customBonusConfig,
-        custom_rank_config: pool.customRankConfig
+        custom_rank_config: pool.customRankConfig,
+        project_url: pool.projectUrl,
+        linked_project_id: pool.linkedProjectId
     }).eq('id', pool.id);
-    await refreshData();
+    if (error) {
+        console.error("Error updating fund:", error);
+    } else {
+        await refreshData();
+    }
   }, [refreshData]);
 
   const deleteInvestmentPool = useCallback(async (id: string) => {
       if (!supabase) { setInvestmentPools(prev => prev.filter(p => p.id !== id)); return; }
-      await supabase.from('investment_pools').delete().eq('id', id);
+      const { error } = await supabase.from('investment_pools').delete().eq('id', id);
+      if (error) console.error("Error deleting fund:", error);
       await refreshData();
   }, [refreshData]);
 
@@ -1016,7 +1089,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const approveWithdrawal = useCallback(async (id: string, txHash: string) => {
       if (!supabase) { setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'completed', txHash } : t)); return; }
-      await supabase.from('transactions').update({ status: 'completed', tx__hash: txHash }).eq('id', id);
+      await supabase.from('transactions').update({ status: 'completed', tx_hash: txHash }).eq('id', id);
       await refreshData();
   }, [refreshData]);
 
