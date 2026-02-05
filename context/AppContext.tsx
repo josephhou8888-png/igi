@@ -396,9 +396,12 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
         return; 
     } 
-    // Minimalist core columns only
+    // FIXED: Minimalist core columns including token_price, token_ticker and blockchain
     const { error } = await supabase.from('projects').insert({
         token_name: p.tokenName, 
+        token_ticker: p.tokenTicker,
+        blockchain: p.blockchain,
+        token_price: p.tokenPrice,
         asset_type: p.assetType, 
         asset_description: p.assetDescription, 
         asset_image_url: p.assetImageUrl,
@@ -415,9 +418,12 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const updateProject = useCallback(async (p: Project) => {
     if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
-    // Minimalist core columns only
+    // FIXED: Minimalist core columns including token_price, token_ticker and blockchain
     const { error } = await supabase.from('projects').update({
         token_name: p.tokenName, 
+        token_ticker: p.tokenTicker,
+        blockchain: p.blockchain,
+        token_price: p.tokenPrice,
         asset_type: p.assetType, 
         asset_description: p.assetDescription, 
         asset_image_url: p.assetImageUrl,
@@ -434,7 +440,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
     if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
-    // FIXED: Stripped down to core mandatory columns to avoid "Column not found" errors
     const { error } = await supabase.from('investment_pools').insert({ 
         name: pool.name, 
         description: pool.description, 
@@ -447,7 +452,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
     if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
-    // FIXED: Stripped down to core mandatory columns to avoid "Column not found" errors
     const { error } = await supabase.from('investment_pools').update({ 
         name: pool.name, 
         description: pool.description, 
@@ -533,7 +537,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         const currentRank = user.rank;
         let newRank = currentRank;
         
-        // Fix: Removed unexpected space in 'sortedRanks' variable declaration on line 537
         const sortedRanks = [...ranks].sort((a,b) => b.level - a.level);
         for (const r of sortedRanks) {
             if (user.totalInvestment >= r.minTotalInvestment && teamSize >= r.minAccounts) {

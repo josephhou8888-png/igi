@@ -27,7 +27,8 @@ const FormInput: React.FC<{
     type?: string, 
     required?: boolean 
     disabled?: boolean
-}> = ({ name, label, value, onChange, type='text', required=true, disabled=false }) => (
+    step?: string
+}> = ({ name, label, value, onChange, type='text', required=true, disabled=false, step }) => (
     <div>
         <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{label}</label>
         <input 
@@ -36,6 +37,7 @@ const FormInput: React.FC<{
             value={String(value || '')} 
             onChange={onChange} 
             disabled={disabled}
+            step={step}
             className="w-full bg-gray-700 text-white rounded-md px-3 py-2 text-sm border border-gray-600 focus:border-brand-primary outline-none transition-all disabled:opacity-50" 
             required={required} 
         />
@@ -184,13 +186,14 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                                     <FormInput name="assetLocation" label={t('projectDetail.location')} value={formData.assetLocation || ''} onChange={handleChange} />
                                     <FormInput name="assetImageUrl" label="Asset Image URL" value={formData.assetImageUrl || ''} onChange={handleChange} />
                                     <FormTextarea name="assetDescription" label="Asset Description" value={formData.assetDescription || ''} onChange={handleChange} />
+                                    <FormInput name="blockchain" label={t('projectDetail.blockchain')} value={formData.blockchain || ''} onChange={handleChange} />
                                 </FormSection>
                                 <FormSection title={t('projectDetail.financials')}>
-                                    <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} value={formData.assetValuation || 0} onChange={handleChange} type="number" />
-                                    <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} value={formData.expectedYield || 0} onChange={handleChange} type="number" />
-                                    <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} value={formData.minInvestment || 0} onChange={handleChange} type="number" />
-                                    <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} value={formData.tokenPrice || 0} onChange={handleChange} type="number" />
-                                    <FormInput name="totalTokenSupply" label="Total Token Supply" value={formData.totalTokenSupply || 0} onChange={handleChange} type="number" />
+                                    <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} value={formData.assetValuation || 0} onChange={handleChange} type="number" step="any" />
+                                    <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} value={formData.expectedYield || 0} onChange={handleChange} type="number" step="any" />
+                                    <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} value={formData.minInvestment || 0} onChange={handleChange} type="number" step="any" />
+                                    <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} value={formData.tokenPrice || 0} onChange={handleChange} type="number" step="any" />
+                                    <FormInput name="totalTokenSupply" label="Total Token Supply" value={formData.totalTokenSupply || 0} onChange={handleChange} type="number" step="any" />
                                 </FormSection>
                             </div>
                         )}
