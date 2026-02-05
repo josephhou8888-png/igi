@@ -901,11 +901,12 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
         legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
         regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        // Fixed: Use smartContractAddress instead of smart_contract_address
         token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, smart_contract_address: p.smartContractAddress,
         distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
+        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
     });
-    if (!error) await refreshData();
+    if (error) console.error("Error adding project:", error);
+    else await refreshData();
   }, [refreshData]);
 
   const updateProject = useCallback(async (p: Project) => {
@@ -914,16 +915,16 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
         token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier,
         asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl,
         asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate || null, 
-        // Fixed: Use performanceHistory instead of performance_history
         performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership,
         legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction,
         regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply,
-        // Fixed: Use smartContractAddress instead of smart_contract_address
         token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
         smart_contract_address: p.smartContractAddress,
         distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles,
+        custom_bonus_config: p.customBonusConfig, custom_rank_config: p.customRankConfig
     }).eq('id', p.id);
-    if (!error) await refreshData();
+    if (error) console.error("Error updating project:", error);
+    else await refreshData();
   }, [refreshData]);
 
   const deleteProject = useCallback(async (id: string) => {
@@ -934,13 +935,27 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
     if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
-    await supabase.from('investment_pools').insert({ name: pool.name, description: pool.description, apy: pool.apy, min_investment: pool.minInvestment });
+    await supabase.from('investment_pools').insert({ 
+        name: pool.name, 
+        description: pool.description, 
+        apy: pool.apy, 
+        min_investment: pool.minInvestment,
+        custom_bonus_config: pool.customBonusConfig,
+        custom_rank_config: pool.customRankConfig
+    });
     await refreshData();
   }, [refreshData]);
 
   const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
     if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
-    await supabase.from('investment_pools').update({ name: pool.name, description: pool.description, apy: pool.apy, min_investment: pool.minInvestment }).eq('id', pool.id);
+    await supabase.from('investment_pools').update({ 
+        name: pool.name, 
+        description: pool.description, 
+        apy: pool.apy, 
+        min_investment: pool.minInvestment,
+        custom_bonus_config: pool.customBonusConfig,
+        custom_rank_config: pool.customRankConfig
+    }).eq('id', pool.id);
     await refreshData();
   }, [refreshData]);
 
@@ -1001,7 +1016,7 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
 
   const approveWithdrawal = useCallback(async (id: string, txHash: string) => {
       if (!supabase) { setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: 'completed', txHash } : t)); return; }
-      await supabase.from('transactions').update({ status: 'completed', tx_hash: txHash }).eq('id', id);
+      await supabase.from('transactions').update({ status: 'completed', tx__hash: txHash }).eq('id', id);
       await refreshData();
   }, [refreshData]);
 
@@ -1086,7 +1101,6 @@ export const AppContextProvider: React.FC<AppContextProviderProps> = ({ children
     try {
         await supabase.from('projects').insert(MOCK_PROJECTS.map(p => ({
             token_name: p.tokenName, token_ticker: p.tokenTicker, asset_type: p.assetType, asset_identifier: p.assetIdentifier, asset_description: p.assetDescription, asset_location: p.assetLocation, asset_image_url: p.assetImageUrl, asset_valuation: p.assetValuation, valuation_method: p.valuationMethod, valuation_date: p.valuationDate, performance_history: p.performanceHistory, expected_yield: p.expectedYield, proof_of_ownership: p.proofOfOwnership, legal_structure: p.legalStructure, legal_wrapper: p.legalWrapper, jurisdiction: p.jurisdiction, regulatory_status: p.regulatoryStatus, investor_requirements: p.investorRequirements, total_token_supply: p.totalTokenSupply, token_price: p.tokenPrice, min_investment: p.minInvestment, blockchain: p.blockchain, 
-            // Fixed: Use smartContractAddress instead of smart_contract_address
             smart_contract_address: p.smartContractAddress, distribution: p.distribution, rights_conferred: p.rightsConferred, asset_custodian: p.assetCustodian, asset_manager: p.assetManager, oracles: p.oracles
         })));
         await supabase.from('investment_pools').insert(MOCK_INVESTMENT_POOLS.map(p => ({ name: p.name, description: p.description, apy: p.apy, min_investment: p.minInvestment })));
