@@ -11,7 +11,7 @@ interface ProjectEditorModalProps {
 
 type Tab = 'general' | 'bonuses' | 'ranks';
 
-// Helper components moved OUTSIDE to prevent re-mounting on state updates
+// Helper components moved OUTSIDE to prevent re-mounting and focus loss on state updates
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="space-y-4 mb-8">
         <h3 className="text-lg font-semibold text-brand-primary border-b border-gray-700 pb-2 mb-4">{title}</h3>
@@ -98,6 +98,7 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
 
     useEffect(() => {
         if (projectToEdit) {
+            setFormData(projectToEdit);
             if (projectToEdit.customBonusConfig) {
                 setBonusConfig(projectToEdit.customBonusConfig);
             }

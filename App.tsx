@@ -25,13 +25,16 @@ const Network = React.lazy(() => import('./components/Network'));
 const LegacyFunds = React.lazy(() => import('./components/LegacyFunds'));
 
 const LoadingFallback = () => (
-  <div className="flex items-center justify-center h-full">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+  <div className="flex items-center justify-center h-screen bg-gray-900">
+    <div className="flex flex-col items-center space-y-4">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+      <p className="text-gray-400 text-sm font-medium animate-pulse">Authenticating...</p>
+    </div>
   </div>
 );
 
 const AppContent: React.FC = () => {
-  const { currentUser } = useAppContext();
+  const { currentUser, loading } = useAppContext();
   const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
   const [isAdminView, setIsAdminView] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -52,10 +55,6 @@ const AppContent: React.FC = () => {
     }
     switch (currentView) {
       case View.DASHBOARD:
-        // Dashboard is critical, we can keep it eager or lazy. 
-        // Since it's default, eager loading the imports above is fine, 
-        // but if we move it to lazy, we need to handle it.
-        // For now, let's keep Dashboard eager (imported at top) for immediate LCP.
         return <Dashboard setView={navigateToProjects} />;
       case View.PROJECTS:
         return (
@@ -86,6 +85,12 @@ const AppContent: React.FC = () => {
     }
   };
 
+  // If the app is still determining auth state, show a generic loader
+  if (loading) {
+    return <LoadingFallback />;
+  }
+
+  // If no user is authenticated after loading finishes, show the login screen
   if (!currentUser) {
     return (
         <>
