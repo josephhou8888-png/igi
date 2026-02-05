@@ -11,7 +11,6 @@ interface PoolEditorModalProps {
 
 type Tab = 'general' | 'bonuses' | 'ranks';
 
-// Helper components moved OUTSIDE
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="space-y-4 mb-8">
         <h3 className="text-lg font-semibold text-brand-primary border-b border-gray-700 pb-2 mb-4">{title}</h3>
@@ -27,7 +26,8 @@ const FormInput: React.FC<{
     type?: string, 
     required?: boolean 
     disabled?: boolean
-}> = ({ name, label, value, onChange, type='text', required=true, disabled=false }) => (
+    step?: string
+}> = ({ name, label, value, onChange, type='text', required=true, disabled=false, step }) => (
     <div>
         <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">{label}</label>
         <input 
@@ -36,6 +36,7 @@ const FormInput: React.FC<{
             value={String(value || '')} 
             onChange={onChange} 
             disabled={disabled}
+            step={step}
             className="w-full bg-gray-700 text-white rounded-md px-3 py-2 text-sm border border-gray-600 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary outline-none transition-all disabled:opacity-50" 
             required={required} 
         />
@@ -70,7 +71,6 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
     const [activeTab, setActiveTab] = useState<Tab>('general');
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // General Data
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -80,7 +80,6 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
         linkedProjectId: '',
     });
 
-    // Custom Configurations
     const [bonusConfig, setBonusConfig] = useState<BonusConfig>({
         instant: globalInstant,
         teamBuilder: globalTeam
@@ -186,8 +185,8 @@ const PoolEditorModal: React.FC<PoolEditorModalProps> = ({ poolToEdit, onClose }
                 <FormInput name="projectUrl" label="Project URL" value={formData.projectUrl} onChange={handleChange} type="url" disabled={isSubmitting} required={false} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput name="minInvestment" label={t('admin.projects.minInvestment')} value={formData.minInvestment} onChange={handleChange} type="number" disabled={isSubmitting} />
-                <FormInput name="apy" label={`${t('admin.legacyFunds.apy')} (%)`} value={formData.apy} onChange={handleChange} type="number" disabled={isSubmitting} />
+                <FormInput name="minInvestment" label={t('admin.projects.minInvestment')} value={formData.minInvestment} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
+                <FormInput name="apy" label={`${t('admin.legacyFunds.apy')} (%)`} value={formData.apy} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
             </div>
         </div>
     );

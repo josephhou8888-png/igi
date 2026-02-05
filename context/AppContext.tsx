@@ -396,7 +396,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
         return; 
     } 
-    // FIXED: Minimalist core columns including token_price, token_ticker and blockchain
     const { error } = await supabase.from('projects').insert({
         token_name: p.tokenName, 
         token_ticker: p.tokenTicker,
@@ -418,7 +417,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const updateProject = useCallback(async (p: Project) => {
     if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
-    // FIXED: Minimalist core columns including token_price, token_ticker and blockchain
     const { error } = await supabase.from('projects').update({
         token_name: p.tokenName, 
         token_ticker: p.tokenTicker,
@@ -581,8 +579,15 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         } else throw new Error("Invalid credentials");
         return;
     }
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
+    
+    // Safety check after login for frozen status
+    const { data: profile } = await supabase.from('profiles').select('is_frozen').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
+    if (profile?.is_frozen) {
+        await supabase.auth.signOut();
+        throw new Error("Account is frozen.");
+    }
   }, [users]);
 
   const signup = useCallback(async (userData: Partial<User>) => {
@@ -591,14 +596,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           setUsers(prev => [...prev, newUser]);
           alert("Account created! (Demo Mode)");
       } else {
-          const { error } = await supabase.auth.signUp({ email: userData.email!, password: userData.password!, options: { data: { name: userData.name, upline_id: userData.uplineId } } });
+          const { error } = await supabase.auth.signUp({ email: userData.email!.trim(), password: userData.password!, options: { data: { name: userData.name, upline_id: userData.uplineId } } });
           if (error) throw error;
           alert("Check your email for confirmation!");
       }
   }, []);
 
   const logout = useCallback(async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('igi_demo_session'); setCurrentUser(null); }, []);
-  const sendPasswordResetEmail = useCallback(async (email: string) => { if (supabase) await supabase.auth.resetPasswordForEmail(email); }, []);
+  const sendPasswordResetEmail = useCallback(async (email: string) => { if (supabase) await supabase.auth.resetPasswordForEmail(email.trim()); }, []);
   const updateUserPassword = useCallback(async (password: string) => { if (supabase) await supabase.auth.updateUser({ password }); }, []);
   const toggleFreezeUser = useCallback(async (userId: string) => { const user = users.find(u => u.id === userId); if (user && supabase) await supabase.from('profiles').update({ is_frozen: !user.isFrozen }).eq('id', userId); await refreshData(); }, [users, refreshData]);
   const updateKycStatus = useCallback(async (userId: string, status: any) => { if (supabase) await supabase.from('profiles').update({ kyc_status: status }).eq('id', userId); await refreshData(); }, [refreshData]);
@@ -608,7 +613,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const deleteProject = useCallback(async (id: string) => { if(window.confirm('Delete project?')) { if (supabase) await supabase.from('projects').delete().eq('id', id); await refreshData(); } }, [refreshData]);
   const deleteInvestmentPool = useCallback(async (id: string) => { if(window.confirm('Delete fund?')) { if (supabase) await supabase.from('investment_pools').delete().eq('id', id); await refreshData(); } }, [refreshData]);
   const updateRankSettings = useCallback((r: Rank[]) => setRanks(r), []);
-  const addManualTransaction = useCallback(async (userId: string, type: any, amount: number, reason: string) => { if (supabase) await supabase.from('transactions').insert({ user_id: userId, type, amount, reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` }); await refreshData(); }, [currentDate, refreshData]);
+  const addManualTransaction = useCallback(async (userId: string, type: any, amount: number, reason: string) => { if (supabase) await supabase.from('transactions').insert({ user_id: userId, type, amount: preciseMath(amount), reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` }); await refreshData(); }, [currentDate, refreshData]);
   const addNewsPost = useCallback(async (post: any) => { if (supabase) await supabase.from('news').insert(post); await refreshData(); }, [refreshData]);
   const deleteNewsPost = useCallback(async (id: string) => { if (supabase) await supabase.from('news').delete().eq('id', id); await refreshData(); } , [refreshData]);
   const adjustUserRank = useCallback(async (userId: string, newRank: number, reason: string) => { if (supabase) await supabase.from('profiles').update({ rank: newRank }).eq('id', userId); await refreshData(); }, [refreshData]);
@@ -618,7 +623,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const approveDeposit = useCallback(async (id: string, bonus: number = 0, autoInvest?: any) => {
     if (supabase) {
         await supabase.from('transactions').update({ status: 'completed' }).eq('id', id);
-        if (bonus > 0) await supabase.from('transactions').insert({ user_id: transactions.find(t=>t.id===id)?.userId, type: 'Manual Bonus', amount: bonus, reason: 'Deposit Bonus', date: currentDate.toISOString().split('T')[0], tx_hash: `BONUS-${Date.now()}` });
+        if (bonus > 0) await supabase.from('transactions').insert({ user_id: transactions.find(t=>t.id===id)?.userId, type: 'Manual Bonus', amount: preciseMath(bonus), reason: 'Deposit Bonus', date: currentDate.toISOString().split('T')[0], tx_hash: `BONUS-${Date.now()}` });
         if (autoInvest) {
             const tx = transactions.find(t=>t.id===id);
             if (tx) await executeInvestment(tx.userId, tx.amount, autoInvest.id, autoInvest.type, 'deposit');
@@ -634,7 +639,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const updateUserRole = useCallback(async (id: string, role: string) => { if (supabase) await supabase.from('profiles').update({ role: role.toLowerCase() }).eq('id', id); await refreshData(); }, [refreshData]);
   const addInvestmentForUser = useCallback(async (id: string, amt: number, aid: string, t: any, s: any) => { await executeInvestment(id, amt, aid, t, s); }, [executeInvestment]);
   const confirmCryptoInvestment = useCallback(async (id: string, amt: number, aid: string, t: any) => { await executeInvestment(id, amt, aid, t, 'deposit'); }, [executeInvestment]);
-  const updateInvestment = useCallback(async (inv: any) => { if (supabase) await supabase.from('investments').update({ amount: inv.amount, status: inv.status }).eq('id', inv.id); await refreshData(); }, [refreshData]);
+  const updateInvestment = useCallback(async (inv: any) => { if (supabase) await supabase.from('investments').update({ amount: preciseMath(inv.amount), status: inv.status }).eq('id', inv.id); await refreshData(); }, [refreshData]);
   const updateNewsPost = useCallback(async (p: any) => { if (supabase) await supabase.from('news').update({ title: p.title, content: p.content }).eq('id', p.id); await refreshData(); }, [refreshData]);
   const updateBonusRates = useCallback((i: any, t: any) => { setInstantBonusRates(i); setTeamBuilderBonusRates(t); }, []);
   const updateTreasuryWallets = useCallback((w: any) => setTreasuryWallets(w), []);
@@ -642,11 +647,11 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const updateWithdrawalLimit = useCallback((l: any) => setWithdrawalLimit(l), []);
   const updateMinWithdrawalLimit = useCallback((l: any) => setMinWithdrawalLimit(l), []);
   const seedDatabase = useCallback(async () => { if (supabase) { setLoading(true); await supabase.from('news').insert(MOCK_NEWS.map(n => ({ title: n.title, content: n.content, author: n.author, date: n.date }))); refreshData(); } }, [refreshData]);
-  const sendReferralInvite = useCallback(async (email: string) => { window.location.href = `mailto:${email}?subject=Invitation`; }, []);
+  const sendReferralInvite = useCallback(async (email: string) => { window.location.href = `mailto:${email.trim()}?subject=Invitation`; }, []);
   const addInvestmentFromBalance = useCallback(async (amt: number, aid: string, type: any, src: any) => { if (currentUser) await executeInvestment(currentUser.id, amt, aid, type, src); }, [currentUser, executeInvestment]);
-  const addCryptoDeposit = useCallback(async (amt: number, tx: string, r?: string) => { if (supabase && currentUser) { await supabase.from('transactions').insert({ user_id: currentUser.id, type: 'Deposit', amount: amt, tx_hash: tx, status: 'pending', reason: r, date: currentDate.toISOString().split('T')[0] }); await refreshData(); } }, [currentUser, currentDate, refreshData]);
+  const addCryptoDeposit = useCallback(async (amt: number, tx: string, r?: string) => { if (supabase && currentUser) { await supabase.from('transactions').insert({ user_id: currentUser.id, type: 'Deposit', amount: preciseMath(amt), tx_hash: tx, status: 'pending', reason: r, date: currentDate.toISOString().split('T')[0] }); await refreshData(); } }, [currentUser, currentDate, refreshData]);
   const markNotificationsAsRead = useCallback(async () => { if (supabase && currentUser) { await supabase.from('notifications').update({ read: true }).eq('user_id', currentUser.id); await refreshData(); } }, [currentUser, refreshData]);
-  const addWithdrawal = useCallback(async (amt: number, addr: string) => { if (supabase && currentUser) { await supabase.from('transactions').insert({ user_id: currentUser.id, type: 'Withdrawal', amount: amt, status: 'pending', reason: `Withdraw to: ${addr}`, date: currentDate.toISOString().split('T')[0], tx_hash: 'PENDING' }); await refreshData(); } }, [currentUser, currentDate, refreshData]);
+  const addWithdrawal = useCallback(async (amt: number, addr: string) => { if (supabase && currentUser) { await supabase.from('transactions').insert({ user_id: currentUser.id, type: 'Withdrawal', amount: preciseMath(amt), status: 'pending', reason: `Withdraw to: ${addr}`, date: currentDate.toISOString().split('T')[0], tx_hash: 'PENDING' }); await refreshData(); } }, [currentUser, currentDate, refreshData]);
 
   return (
     <AppContext.Provider value={{
