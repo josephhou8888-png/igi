@@ -1,5 +1,5 @@
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { AppContextProvider } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
 import { useAppContext } from './hooks/useAppContext';
@@ -34,11 +34,22 @@ const LoadingFallback = () => (
 );
 
 const AppContent: React.FC = () => {
-  const { currentUser, loading } = useAppContext();
+  const { currentUser, loading, setIsLoading } = useAppContext();
   const [currentView, setCurrentView] = useState<View>(View.DASHBOARD);
   const [isAdminView, setIsAdminView] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  // Fail-safe to ensure the app doesn't hang forever on misconfigured Supabase
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => {
+        console.warn("Auth initialization timed out. Forcing UI to resolve.");
+        setIsLoading(false);
+      }, 6000); // 6 seconds limit
+      return () => clearTimeout(timer);
+    }
+  }, [loading, setIsLoading]);
 
   const navigateToProjects = () => {
     setSelectedProjectId(null);

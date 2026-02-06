@@ -98,6 +98,7 @@ interface AppContextType {
   inviteModalOpen: boolean;
   setInviteModalOpen: (open: boolean) => void;
   loading: boolean;
+  setIsLoading: (loading: boolean) => void;
   isDemoMode: boolean;
   refreshData: () => Promise<void>;
 }
@@ -146,17 +147,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return; 
     }
     try {
-      // Individual table fetches to prevent whole-system failure if one table is missing or RLS blocked
-      const [
-          { data: usersData }, 
-          { data: invData }, 
-          { data: txData }, 
-          { data: bnsData }, 
-          { data: projData }, 
-          { data: poolData }, 
-          { data: newsData }, 
-          { data: notifData }
-      ] = await Promise.all([
+      // Use allSettled to ensure the application doesn't hang if some tables are missing
+      const results = await Promise.allSettled([
         supabase.from('profiles').select('*'),
         supabase.from('investments').select('*'),
         supabase.from('transactions').select('*'),
@@ -167,8 +159,10 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         supabase.from('notifications').select('*')
       ]);
 
-      if (usersData) {
-          const mappedUsers = usersData.map(u => ({
+      const [usersRes, invRes, txRes, bnsRes, projRes, poolRes, newsRes, notifRes] = results;
+
+      if (usersRes.status === 'fulfilled' && usersRes.value.data) {
+          const mappedUsers = usersRes.value.data.map(u => ({
               ...u,
               id: u.id,
               name: sanitizeString(u.name, 'User'),
@@ -189,7 +183,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           }));
           setUsers(mappedUsers);
 
-          // Get fresh auth session inside refreshData to avoid circular dependency on currentUser
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
               const freshSelf = mappedUsers.find(u => u.id === session.user.id);
@@ -199,7 +192,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           }
       }
       
-      if (invData) setInvestments(invData.map(i => ({
+      if (invRes.status === 'fulfilled' && invRes.value.data) setInvestments(invRes.value.data.map(i => ({
         ...i,
         userId: i.user_id,
         projectId: i.project_id,
@@ -211,7 +204,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         apy: i.apy !== undefined ? Number(i.apy || 0) : undefined
       })));
 
-      if (txData) setTransactions(txData.map(t => ({
+      if (txRes.status === 'fulfilled' && txRes.value.data) setTransactions(txRes.value.data.map(t => ({
         ...t,
         userId: t.user_id,
         txHash: t.tx_hash,
@@ -220,9 +213,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         status: t.status
       })));
 
-      if (bnsData) setBonuses(bnsData.map(b => ({ ...b, userId: b.user_id, sourceId: b.source_id })));
+      if (bnsRes.status === 'fulfilled' && bnsRes.value.data) setBonuses(bnsRes.value.data.map(b => ({ ...b, userId: b.user_id, sourceId: b.source_id })));
 
-      if (projData) setProjects(projData.map(p => ({
+      if (projRes.status === 'fulfilled' && projRes.value.data) setProjects(projRes.value.data.map(p => ({
           ...p,
           id: p.id,
           tokenName: sanitizeString(p.token_name, 'Project'),
@@ -230,7 +223,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           minInvestment: Number(p.min_investment || 0)
       })));
 
-      if (poolData) setInvestmentPools(poolData.map(p => ({
+      if (poolRes.status === 'fulfilled' && poolRes.value.data) setInvestmentPools(poolRes.value.data.map(p => ({
           ...p,
           id: p.id,
           name: sanitizeString(p.name, 'Fund'),
@@ -238,17 +231,16 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           minInvestment: Number(p.min_investment || 0)
       })));
 
-      if (newsData) setNews(newsData);
-      if (notifData) setNotifications(notifData.map(n => ({...n, userId: n.user_id})));
+      if (newsRes.status === 'fulfilled' && newsRes.value.data) setNews(newsRes.value.data);
+      if (notifRes.status === 'fulfilled' && notifRes.value.data) setNotifications(notifRes.value.data.map(n => ({...n, userId: n.user_id})));
     } catch (error) { 
-        console.error("Error loading Supabase data:", error); 
+        console.error("Critical error in refreshData:", error); 
     } finally { 
         setLoading(false); 
     }
   }, []);
 
   useEffect(() => {
-    // Demo Mode Logic
     if (!supabase) {
         setUsers(MOCK_USERS);
         setInvestments(MOCK_INVESTMENTS);
@@ -266,12 +258,16 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
     }
     
-    // Supabase Mode Logic
     let isSubscribed = true;
 
     const initialize = async () => {
-        await refreshData();
-        if (isSubscribed) setLoading(false);
+        try {
+            await refreshData();
+        } catch (e) {
+            console.error("Initialization failed", e);
+        } finally {
+            if (isSubscribed) setLoading(false);
+        }
     };
 
     initialize();
@@ -588,7 +584,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
       adjustUserRank, getUserBalances, solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
       approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal, createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit, updateMinWithdrawalLimit, seedDatabase, sendReferralInvite,
-      login, signup, logout, sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode, inviteModalOpen, setInviteModalOpen, loading, isDemoMode: !supabase,
+      login, signup, logout, sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode, inviteModalOpen, setInviteModalOpen, loading, setIsLoading: setLoading, isDemoMode: !supabase,
       refreshData
     }}>
       {children}
