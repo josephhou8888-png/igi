@@ -124,7 +124,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const [news, setNews] = useState<NewsPost[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Platform Settings (Managed via Admin)
+  // Platform Settings
   const [ranks, setRanks] = useState<Rank[]>(INITIAL_RANKS);
   const [currentDate, setCurrentDate] = useState(new Date('2023-11-28T12:00:00Z'));
   const [instantBonusRates, setInstantBonusRates] = useState(INITIAL_INSTANT_BONUS_RATES);
@@ -143,7 +143,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const refreshData = useCallback(async () => {
     if (!supabase) { 
-        // Fallback for Demo mode
         setLoading(false); 
         return; 
     }
@@ -165,7 +164,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
               id: u.id,
               name: sanitizeString(u.name, 'User'),
               email: u.email,
-              wallet: u.wallet || '', // Ensure wallet is mapped correctly
+              wallet: u.wallet || '',
               country: sanitizeString(u.country, 'Global'),
               avatar: sanitizeString(u.avatar, `https://ui-avatars.com/api/?name=${encodeURIComponent(sanitizeString(u.name, 'User'))}&background=random&color=fff`),
               totalInvestment: Number(u.total_investment || 0),
@@ -181,14 +180,12 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           }));
           setUsers(mappedUsers);
 
-          // Crucial: Update currentUser if they exist in the fresh data
-          if (currentUser) {
-              const freshSelf = mappedUsers.find(u => u.id === currentUser.id);
+          // Get fresh auth session to ensure we have the correct ID
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+              const freshSelf = mappedUsers.find(u => u.id === session.user.id);
               if (freshSelf) {
-                  // Only update if something actually changed to avoid infinite render loops
-                  if (JSON.stringify(freshSelf) !== JSON.stringify(currentUser)) {
-                      setCurrentUser(freshSelf);
-                  }
+                  setCurrentUser(freshSelf);
               }
           }
       }
@@ -202,7 +199,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         poolName: i.pool_name,
         totalProfitEarned: Number(i.total_profit_earned || 0),
         source: i.source,
-        // We stop relying on the DB column 'apy' here. APY is looked up dynamically.
         apy: i.apy !== undefined ? Number(i.apy || 0) : undefined
       })));
 
@@ -240,7 +236,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally { 
         setLoading(false); 
     }
-  }, [currentUser]);
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -260,18 +256,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
     }
     
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-          refreshData();
-      } else {
-          setLoading(false);
-      }
-    });
+    // Initial fetch
+    refreshData();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // Setup listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordResetMode(true);
       if (session?.user) {
-          refreshData();
+          await refreshData();
       } else {
           setCurrentUser(null);
           setLoading(false);
@@ -280,6 +272,64 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, [refreshData]);
+
+  const login = useCallback(async (email: string, password: string) => {
+    if (!supabase) {
+        const user = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
+        if (user && (user.password === password || password === 'password')) {
+             if(user.isFrozen) throw new Error("Account is frozen.");
+             setCurrentUser(user);
+             localStorage.setItem('igi_demo_session', user.id);
+        } else throw new Error("Invalid credentials");
+        return;
+    }
+    
+    // Attempt login
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) throw error;
+
+    // Immediately fetch profile after login
+    if (data.user) {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+        
+        if (profileError || !profile) {
+            // Profile missing - trigger a creation attempt if needed or just inform user
+            console.warn("User authenticated but profile not found in database.");
+            throw new Error("Login successful but your profile data is not ready. Please try again in a moment.");
+        }
+        
+        if (profile.is_frozen) {
+            await supabase.auth.signOut();
+            throw new Error("Account is frozen.");
+        }
+        
+        await refreshData();
+    }
+  }, [refreshData]);
+
+  const signup = useCallback(async (userData: Partial<User>) => {
+      if (!supabase) {
+        alert("Signup is disabled in demo mode. Please log in with existing credentials.");
+        return;
+      }
+      const { error } = await supabase.auth.signUp({ 
+          email: userData.email!.trim(), 
+          password: userData.password!, 
+          options: { 
+              data: { 
+                  name: userData.name, 
+                  upline_id: userData.uplineId, 
+                  country: userData.country 
+              } 
+          } 
+      });
+      if (error) throw error;
+      alert("Registration successful! Check your email for verification.");
+  }, []);
 
   const getUserBalances = useCallback((userId: string) => {
       const userTransactions = transactions.filter(t => t.userId === userId);
@@ -343,8 +393,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             }]);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: preciseMath(u.totalInvestment + amount) } : u));
         } else {
-            // CRITICAL FIX: Explicitly remove 'apy' column from the insert payload
-            // to prevent "Could not find column apy" errors in Supabase.
             const insertPayload: any = {
                 user_id: userId,
                 amount: preciseMath(amount),
@@ -359,11 +407,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             };
 
             const { data: invData, error: invError } = await supabase.from('investments').insert(insertPayload).select().single();
-
-            if (invError) {
-                console.error("Supabase Investment Error:", invError);
-                throw invError;
-            }
+            if (invError) throw invError;
             
             await supabase.from('transactions').insert({
                 user_id: userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
@@ -385,21 +429,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         if (currentUser?.id === updatedUser.id) setCurrentUser(updatedUser);
         return;
     }
-    
-    // Explicitly update all profile fields including 'wallet'
     const { error } = await supabase.from('profiles').update({
         name: updatedUser.name,
         avatar: updatedUser.avatar,
-        wallet: updatedUser.wallet, // This column name must match Supabase exactly
+        wallet: updatedUser.wallet,
         rank: updatedUser.rank,
         country: updatedUser.country
     }).eq('id', updatedUser.id);
-    
-    if (error) {
-        console.error("Profile update failed:", error);
-        throw error;
-    }
-    
+    if (error) throw error;
     await refreshData();
   }, [refreshData, currentUser]);
 
@@ -418,8 +455,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
         updatedInvestments.forEach(inv => {
             if (inv.status !== 'Active') return;
-            
-            // Dynamic APY lookup (Resilient to missing DB column)
             let apy = 0;
             if (inv.projectId) {
                 const p = projects.find(proj => proj.id === inv.projectId);
@@ -460,33 +495,18 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [currentDate, investments, projects, investmentPools, refreshData]);
 
-  // Rest of the existing methods...
-  const login = useCallback(async (email: string, password: string) => {
-    if (!supabase) {
-        const user = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
-        if (user && (user.password === password || password === 'password')) {
-             if(user.isFrozen) throw new Error("Account is frozen.");
-             setCurrentUser(user);
-             localStorage.setItem('igi_demo_session', user.id);
-        } else throw new Error("Invalid credentials");
-        return;
+  const logout = useCallback(async () => { 
+    if (supabase) await supabase.auth.signOut(); 
+    localStorage.removeItem('igi_demo_session'); 
+    setCurrentUser(null); 
+  }, []);
+
+  const runMonthlyCycle = useCallback(async (cycleDate: Date) => {
+    if (supabase) {
+        await refreshData();
     }
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) throw error;
-  }, []);
+  }, [refreshData]);
 
-  const signup = useCallback(async (userData: Partial<User>) => {
-      if (supabase) {
-          const { error } = await supabase.auth.signUp({ 
-              email: userData.email!.trim(), 
-              password: userData.password!, 
-              options: { data: { name: userData.name, upline_id: userData.uplineId, country: userData.country } } 
-          });
-          if (error) throw error;
-      }
-  }, []);
-
-  const logout = useCallback(async () => { if (supabase) await supabase.auth.signOut(); localStorage.removeItem('igi_demo_session'); setCurrentUser(null); }, []);
   const sendPasswordResetEmail = useCallback(async (email: string) => { if (supabase) await supabase.auth.resetPasswordForEmail(email.trim()); }, []);
   const updateUserPassword = useCallback(async (password: string) => { if (supabase) await supabase.auth.updateUser({ password }); }, []);
   const toggleFreezeUser = useCallback(async (userId: string) => { const user = users.find(u => u.id === userId); if (user && supabase) await supabase.from('profiles').update({ is_frozen: !user.isFrozen }).eq('id', userId); await refreshData(); }, [users, refreshData]);
@@ -497,15 +517,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const addManualTransaction = useCallback(async (userId: string, type: any, amount: number, reason: string) => { if (supabase) await supabase.from('transactions').insert({ user_id: userId, type, amount: preciseMath(amount), reason, date: currentDate.toISOString().split('T')[0], tx_hash: `MANUAL-${Date.now()}` }); await refreshData(); }, [currentDate, refreshData]);
   const addNewsPost = useCallback(async (post: any) => { if (supabase) await supabase.from('news').insert(post); await refreshData(); }, [refreshData]);
   const deleteNewsPost = useCallback(async (id: string) => { if (supabase) await supabase.from('news').delete().eq('id', id); await refreshData(); } , [refreshData]);
-
-  // Added runMonthlyCycle to fix shorthand property error
-  const runMonthlyCycle = useCallback(async (cycleDate: Date) => {
-    if (supabase) {
-        console.log("Running monthly cycle refresh for:", cycleDate);
-        await refreshData();
-    }
-  }, [refreshData]);
-
   const addProject = useCallback(async (p: any) => { if (supabase) await supabase.from('projects').insert(p); await refreshData(); }, [refreshData]);
   const updateProject = useCallback(async (p: any) => { if (supabase) await supabase.from('projects').update(p).eq('id', p.id); await refreshData(); }, [refreshData]);
   const deleteProject = useCallback(async (id: string) => { if (supabase) await supabase.from('projects').delete().eq('id', id); await refreshData(); }, [refreshData]);
