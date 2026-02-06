@@ -100,6 +100,7 @@ interface AppContextType {
   setInviteModalOpen: (open: boolean) => void;
   loading: boolean;
   isDemoMode: boolean;
+  refreshData: () => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -191,7 +192,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         poolName: i.pool_name,
         totalProfitEarned: Number(i.total_profit_earned || 0),
         source: i.source,
-        // Robust mapping for potential missing apy column
         apy: i.apy !== undefined ? Number(i.apy || 0) : undefined
       })));
 
@@ -320,11 +320,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
       const userInvestments = investments.filter(i => i.userId === userId);
 
       const totalDeposits = userTransactions
-        .filter(t => (t.type === 'Deposit' && (t.status === 'completed' || t.status === undefined)) || t.type === 'Manual Bonus')
+        .filter(t => (t.type === 'Deposit' && t.status === 'completed') || (t.type === 'Deposit' && t.status === undefined) || t.type === 'Manual Bonus')
         .reduce((sum, t) => sum + t.amount, 0);
 
       const totalProfits = userTransactions.filter(t => t.type === 'Profit Share' || t.type === 'Bonus').reduce((sum, t) => sum + t.amount, 0);
-      const totalWithdrawals = userTransactions.filter(t => (t.type === 'Withdrawal' && t.status !== 'rejected') || t.type === 'Manual Deduction').reduce((sum, t) => sum + t.amount, 0);
+      
+      const totalWithdrawals = userTransactions
+        .filter(t => (t.type === 'Withdrawal' && t.status !== 'rejected') || t.type === 'Manual Deduction')
+        .reduce((sum, t) => sum + t.amount, 0);
 
       const investmentsFromDeposit = userInvestments.filter(i => i.source === 'deposit').reduce((sum, i) => sum + i.amount, 0);
       const reinvestmentsFromProfit = userInvestments.filter(i => i.source === 'profit_reinvestment').reduce((sum, i) => sum + i.amount, 0);
@@ -372,12 +375,10 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             setInvestments(prev => [...prev, newInvestment]);
             setTransactions(prev => [...prev, {
                 id: `tx-${Date.now()}`, userId, type: source === 'profit_reinvestment' ? 'Reinvestment' : 'Investment',
-                amount: preciseMath(amount), txHash: 'DEMO-HASH', date: dateStr, investmentId: newInvestment.id
+                amount: preciseMath(amount), txHash: 'INTERNAL', date: dateStr, investmentId: newInvestment.id
             }]);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: preciseMath(u.totalInvestment + amount) } : u));
         } else {
-            // FIXED: Removed direct mapping of 'apy' to ensure database compatibility.
-            // If the column is missing in Supabase, the insert will still succeed.
             const insertPayload: any = {
                 user_id: userId, amount: preciseMath(amount), date: dateStr,
                 status: 'Active', project_id: investmentType === 'project' ? assetId : null, 
@@ -387,8 +388,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
                 total_profit_earned: 0, source: source
             };
 
-            // Only attempt to send apy if we're sure it's helpful, 
-            // but we wrap in a fallback for better error handling.
             const { data: invData, error: invError } = await supabase.from('investments').insert(insertPayload).select().single();
 
             if (invError) throw invError;
@@ -403,79 +402,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         await refreshData();
     } catch (e: any) {
         console.error("Investment failed:", e);
-        // Better error UX:
-        alert("Action Required: Your 'investments' table is missing the 'apy' column in Supabase. Please add a numeric 'apy' column to the 'investments' table or contact support. System will continue without historical APY tracking.");
+        alert("Investment failed: " + e.message);
     }
   }, [users, currentDate, projects, investmentPools, refreshData]);
-
-  const addProject = useCallback(async (p: Partial<Omit<Project, 'id'>>) => {
-    if (!supabase) { 
-        setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
-        return; 
-    } 
-    const { error } = await supabase.from('projects').insert({
-        token_name: p.tokenName, 
-        token_ticker: p.tokenTicker,
-        blockchain: p.blockchain,
-        token_price: p.tokenPrice,
-        asset_type: p.assetType, 
-        asset_description: p.assetDescription, 
-        asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, 
-        expected_yield: p.expectedYield, 
-        min_investment: p.minInvestment
-    });
-    if (error) { 
-        console.error("Error adding project:", error); 
-        alert("Save failed: " + error.message); 
-    }
-    else { await refreshData(); }
-  }, [refreshData]);
-
-  const updateProject = useCallback(async (p: Project) => {
-    if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
-    const { error } = await supabase.from('projects').update({
-        token_name: p.tokenName, 
-        token_ticker: p.tokenTicker,
-        blockchain: p.blockchain,
-        token_price: p.tokenPrice,
-        asset_type: p.assetType, 
-        asset_description: p.assetDescription, 
-        asset_image_url: p.assetImageUrl,
-        asset_valuation: p.assetValuation, 
-        expected_yield: p.expectedYield, 
-        min_investment: p.minInvestment
-    }).eq('id', p.id);
-    if (error) { 
-        console.error("Error updating project:", error); 
-        alert("Update failed: " + error.message); 
-    }
-    else { await refreshData(); }
-  }, [refreshData]);
-
-  const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
-    if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
-    const { error } = await supabase.from('investment_pools').insert({ 
-        name: pool.name, 
-        description: pool.description, 
-        apy: pool.apy, 
-        min_investment: pool.minInvestment
-    });
-    if (error) { console.error("Error adding fund:", error); alert("Save failed: " + error.message); }
-    else { await refreshData(); }
-  }, [refreshData]);
-
-  const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
-    if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
-    const { error } = await supabase.from('investment_pools').update({ 
-        name: pool.name, 
-        description: pool.description, 
-        apy: pool.apy, 
-        min_investment: pool.minInvestment
-    }).eq('id', pool.id);
-    if (error) { console.error("Error updating fund:", error); alert("Update failed: " + error.message); }
-    else { await refreshData(); }
-  }, [refreshData]);
 
   const advanceDate = useCallback(async (days: number) => {
     const newDate = new Date(currentDate);
@@ -492,7 +421,19 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
         updatedInvestments.forEach(inv => {
             if (inv.status !== 'Active') return;
-            const apy = inv.apy || 0;
+            
+            // Resilience: Fallback to current asset APY if snapshot is missing
+            let apy = inv.apy;
+            if (apy === undefined || apy === null) {
+                if (inv.projectId) {
+                    const p = projects.find(proj => proj.id === inv.projectId);
+                    apy = p ? p.expectedYield : 0;
+                } else if (inv.poolId) {
+                    const pool = investmentPools.find(p => p.id === inv.poolId);
+                    apy = pool ? pool.apy : 0;
+                } else { apy = 0; }
+            }
+
             if (apy > 0) {
                 const dailyProfit = preciseMath(inv.amount * (apy / 100 / 365), 8);
                 if (dailyProfit > 0) {
@@ -522,12 +463,91 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             await refreshData();
         }
     }
-  }, [currentDate, investments, refreshData]);
+  }, [currentDate, investments, projects, investmentPools, refreshData]);
+
+  const approveDeposit = useCallback(async (id: string, bonus: number = 0, autoInvest?: { type: 'project' | 'pool', id: string }) => {
+    if (supabase) {
+        const { error: txError } = await supabase.from('transactions').update({ status: 'completed' }).eq('id', id);
+        if (txError) throw txError;
+
+        const tx = transactions.find(t => t.id === id);
+        if (!tx) return;
+
+        if (bonus > 0) {
+            await supabase.from('transactions').insert({ 
+                user_id: tx.userId, 
+                type: 'Manual Bonus', 
+                amount: preciseMath(bonus), 
+                reason: 'Deposit Bonus', 
+                date: currentDate.toISOString().split('T')[0], 
+                tx_hash: `BONUS-${Date.now()}` 
+            });
+        }
+        
+        if (autoInvest && autoInvest.id) {
+            await executeInvestment(tx.userId, tx.amount, autoInvest.id, autoInvest.type, 'deposit');
+        }
+        await refreshData();
+    }
+  }, [refreshData, transactions, currentDate, executeInvestment]);
+
+  // Rest of the AppContext implementation...
+  const addProject = useCallback(async (p: Partial<Omit<Project, 'id'>>) => {
+    if (!supabase) { 
+        setProjects(prev => [...prev, { id: `proj-${Date.now()}`, ...p } as Project]); 
+        return; 
+    } 
+    const { error } = await supabase.from('projects').insert({
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker,
+        blockchain: p.blockchain,
+        token_price: p.tokenPrice,
+        asset_type: p.assetType, 
+        asset_description: p.assetDescription, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        expected_yield: p.expectedYield, 
+        min_investment: p.minInvestment
+    });
+    if (error) { console.error("Error adding project:", error); alert("Save failed: " + error.message); }
+    else { await refreshData(); }
+  }, [refreshData]);
+
+  const updateProject = useCallback(async (p: Project) => {
+    if (!supabase) { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); return; }
+    const { error } = await supabase.from('projects').update({
+        token_name: p.tokenName, 
+        token_ticker: p.tokenTicker,
+        blockchain: p.blockchain,
+        token_price: p.tokenPrice,
+        asset_type: p.assetType, 
+        asset_description: p.assetDescription, 
+        asset_image_url: p.assetImageUrl,
+        asset_valuation: p.assetValuation, 
+        expected_yield: p.expectedYield, 
+        min_investment: p.minInvestment
+    }).eq('id', p.id);
+    if (error) { console.error("Error updating project:", error); alert("Update failed: " + error.message); }
+    else { await refreshData(); }
+  }, [refreshData]);
+
+  const addInvestmentPool = useCallback(async (pool: Omit<InvestmentPool, 'id'>) => {
+    if (!supabase) { setInvestmentPools(prev => [...prev, { id: `pool-${Date.now()}`, ...pool }]); return; }
+    const { error } = await supabase.from('investment_pools').insert({ name: pool.name, description: pool.description, apy: pool.apy, min_investment: pool.minInvestment });
+    if (error) { console.error("Error adding fund:", error); alert("Save failed: " + error.message); }
+    else { await refreshData(); }
+  }, [refreshData]);
+
+  const updateInvestmentPool = useCallback(async (pool: InvestmentPool) => {
+    if (!supabase) { setInvestmentPools(prev => prev.map(p => p.id === pool.id ? pool : p)); return; }
+    const { error } = await supabase.from('investment_pools').update({ name: pool.name, description: pool.description, apy: pool.apy, min_investment: pool.minInvestment }).eq('id', pool.id);
+    if (error) { console.error("Error updating fund:", error); alert("Update failed: " + error.message); }
+    else { await refreshData(); }
+  }, [refreshData]);
 
   const runMonthlyCycle = useCallback(async (cycleDate: Date) => {
     const dateStr = cycleDate.toISOString().split('T')[0];
     const userUpdates: any[] = [];
-    
     const getDownlineCount = (rootId: string): number => {
         const visited = new Set<string>([rootId]);
         const queue = [rootId];
@@ -545,13 +565,11 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         }
         return count;
     };
-
     users.forEach(user => {
         if (user.role === 'admin') return;
         const teamSize = getDownlineCount(user.id);
         const currentRank = user.rank;
         let newRank = currentRank;
-        
         const sortedRanks = [...ranks].sort((a,b) => b.level - a.level);
         for (const r of sortedRanks) {
             if (user.totalInvestment >= r.minTotalInvestment && teamSize >= r.minAccounts) {
@@ -559,12 +577,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
                 break;
             }
         }
-
-        if (newRank > currentRank) {
-            userUpdates.push({ id: user.id, rank: newRank, teamSize });
-        }
+        if (newRank > currentRank) { userUpdates.push({ id: user.id, rank: newRank, teamSize }); }
     });
-
     if (userUpdates.length > 0) {
         if (!supabase) {
             setUsers(prev => prev.map(u => {
@@ -574,12 +588,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         } else {
             for (const up of userUpdates) {
                 await supabase.from('profiles').update({ rank: up.rank, total_downline: up.teamSize }).eq('id', up.id);
-                await supabase.from('notifications').insert({
-                    user_id: up.id,
-                    type: 'Rank Promotion',
-                    message: `Congratulations! You have reached Rank L${up.rank}!`,
-                    date: dateStr
-                });
+                await supabase.from('notifications').insert({ user_id: up.id, type: 'Rank Promotion', message: `Congratulations! You have reached Rank L${up.rank}!`, date: dateStr });
             }
             await refreshData();
         }
@@ -598,13 +607,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
-    
-    // Safety check after login for frozen status
     const { data: profile } = await supabase.from('profiles').select('is_frozen').eq('id', (await supabase.auth.getUser()).data.user?.id).single();
-    if (profile?.is_frozen) {
-        await supabase.auth.signOut();
-        throw new Error("Account is frozen.");
-    }
+    if (profile?.is_frozen) { await supabase.auth.signOut(); throw new Error("Account is frozen."); }
   }, [users]);
 
   const signup = useCallback(async (userData: Partial<User>) => {
@@ -637,18 +641,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
   const connectSolanaWallet = useCallback(async () => { if (window.solana) { try { const r = await window.solana.connect(); setSolanaWalletAddress(r.publicKey.toString()); } catch (err) {} } }, []);
   const disconnectSolanaWallet = useCallback(() => { if (window.solana) window.solana.disconnect(); setSolanaWalletAddress(null); }, []);
   const fetchAllBalances = useCallback(async () => {}, []);
-  const approveDeposit = useCallback(async (id: string, bonus: number = 0, autoInvest?: any) => {
-    if (supabase) {
-        await supabase.from('transactions').update({ status: 'completed' }).eq('id', id);
-        if (bonus > 0) await supabase.from('transactions').insert({ user_id: transactions.find(t=>t.id===id)?.userId, type: 'Manual Bonus', amount: preciseMath(bonus), reason: 'Deposit Bonus', date: currentDate.toISOString().split('T')[0], tx_hash: `BONUS-${Date.now()}` });
-        if (autoInvest) {
-            const tx = transactions.find(t=>t.id===id);
-            if (tx) await executeInvestment(tx.userId, tx.amount, autoInvest.id, autoInvest.type, 'deposit');
-        }
-        await refreshData();
-    }
-  }, [refreshData, transactions, currentDate, executeInvestment]);
-  
   const rejectDeposit = useCallback(async (id: string, reason: string) => { if (supabase) await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', id); await refreshData(); }, [refreshData]);
   const approveWithdrawal = useCallback(async (id: string, txHash: string) => { if (supabase) await supabase.from('transactions').update({ status: 'completed', tx_hash: txHash }).eq('id', id); await refreshData(); }, [refreshData]);
   const rejectWithdrawal = useCallback(async (id: string, reason: string) => { if (supabase) await supabase.from('transactions').update({ status: 'rejected', rejection_reason: reason }).eq('id', id); await refreshData(); }, [refreshData]);
@@ -680,7 +672,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
       adjustUserRank, getUserBalances, solanaWalletAddress, igiTokenBalance, solBalance, connectSolanaWallet, disconnectSolanaWallet, fetchAllBalances,
       approveDeposit, rejectDeposit, approveWithdrawal, rejectWithdrawal, createUser, updateUserRole, addInvestmentForUser, confirmCryptoInvestment, updateInvestment,
       updateNewsPost, updateBonusRates, updateTreasuryWallets, updateSocialLinks, updateWithdrawalLimit, updateMinWithdrawalLimit, seedDatabase, sendReferralInvite,
-      login, signup, logout, sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode, inviteModalOpen, setInviteModalOpen, loading, isDemoMode: !supabase
+      login, signup, logout, sendPasswordResetEmail, updateUserPassword, passwordResetMode, setPasswordResetMode, inviteModalOpen, setInviteModalOpen, loading, isDemoMode: !supabase,
+      refreshData
     }}>
       {children}
     </AppContext.Provider>

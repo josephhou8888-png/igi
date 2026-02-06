@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext';
 import { useLocalization } from '../../hooks/useLocalization';
 import AdminInflowOutflowChart from '../charts/AdminInflowOutflowChart';
@@ -20,9 +20,14 @@ import WithdrawalManagement from './WithdrawalManagement';
 type AdminTab = 'overview' | 'users' | 'deposits' | 'withdrawals' | 'investments' | 'payouts' | 'projects' | 'legacyFunds' | 'transactions' | 'reports' | 'news' | 'settings';
 
 const AdminDashboard: React.FC = () => {
-  const { users, investments, transactions, bonuses, currentDate, advanceDate } = useAppContext();
+  const { users, investments, transactions, bonuses, currentDate, advanceDate, refreshData } = useAppContext();
   const { t } = useLocalization();
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+
+  // Trigger data refresh when changing tabs to ensure admin always sees latest state
+  useEffect(() => {
+    refreshData();
+  }, [activeTab, refreshData]);
 
   const {
     totalInvested,
@@ -51,32 +56,18 @@ const AdminDashboard: React.FC = () => {
   
   const inflowOutflowData = useMemo(() => {
     const dailyData: { [date: string]: { inflow: number; outflow: number } } = {};
-
     transactions.forEach(tx => {
-        if (!dailyData[tx.date]) {
-            dailyData[tx.date] = { inflow: 0, outflow: 0 };
-        }
+        if (!dailyData[tx.date]) { dailyData[tx.date] = { inflow: 0, outflow: 0 }; }
         if (tx.type === 'Deposit' && tx.status === 'completed') {
             dailyData[tx.date].inflow += tx.amount;
         } else if (tx.type === 'Withdrawal' && tx.status === 'completed') {
             dailyData[tx.date].outflow += tx.amount;
         }
     });
-
     return Object.entries(dailyData)
         .map(([date, { inflow, outflow }]) => ({ date, inflow, outflow }))
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [transactions]);
-
-  const dailyInvestmentsData = useMemo(() => {
-    const dailyData: { [date: string]: number } = {};
-    investments.forEach(inv => {
-        dailyData[inv.date] = (dailyData[inv.date] || 0) + inv.amount;
-    });
-    return Object.entries(dailyData)
-      .map(([date, amount]) => ({ date, amount }))
-      .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [investments]);
 
   const payoutsByRankData = useMemo(() => {
     const rankData: { [rank: string]: number } = {};
@@ -91,17 +82,17 @@ const AdminDashboard: React.FC = () => {
   }, [bonuses, users]);
 
   const Card: React.FC<{ title: string; value: string | number; }> = ({ title, value }) => (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-      <h3 className="text-sm font-medium text-gray-400 uppercase">{title}</h3>
-      <p className="text-3xl font-bold text-white mt-2">{value}</p>
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700/50">
+      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{title}</h3>
+      <p className="text-3xl font-black text-white mt-2">{value}</p>
     </div>
   );
 
   const TabButton: React.FC<{ tabId: AdminTab; label: React.ReactNode; }> = ({ tabId, label }) => (
     <button
       onClick={() => setActiveTab(tabId)}
-      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap flex items-center justify-center ${
-        activeTab === tabId ? 'bg-brand-primary text-white' : 'text-gray-300 hover:bg-gray-700'
+      className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center border ${
+        activeTab === tabId ? 'bg-brand-primary border-brand-primary text-white shadow-lg' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-700'
       }`}
     >
       {label}
@@ -114,7 +105,7 @@ const AdminDashboard: React.FC = () => {
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card title={t('admin.overview.totalInvested')} value={`$${totalInvested.toLocaleString()}`} />
+              <Card title={t('admin.overview.totalInvested')} value={`$${totalInvested.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`} />
               <Card title={t('admin.overview.totalUsers')} value={totalUsers} />
               <Card title={t('admin.overview.activeAccounts')} value={activeUsers} />
               <Card title={t('admin.overview.pendingKYC')} value={pendingKYC} />
@@ -123,21 +114,24 @@ const AdminDashboard: React.FC = () => {
                 <Card title={t('admin.overview.newUsersToday')} value={newUsersToday} />
                 <Card title={t('admin.overview.investmentsToday')} value={`$${investmentsToday.toLocaleString()}`} />
             </div>
-             <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-                <h3 className="text-lg font-semibold text-white mb-4">{t('admin.overview.inflowOutflow')}</h3>
+             <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700/50">
+                <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                    {t('admin.overview.inflowOutflow')}
+                </h3>
                 <div className="h-72">
                     <AdminInflowOutflowChart data={inflowOutflowData} />
                 </div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-                    <h3 className="text-lg font-semibold text-white mb-4">{t('admin.overview.dailyNewInvestments')}</h3>
+                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700/50">
+                    <h3 className="text-lg font-bold text-white mb-4">{t('admin.overview.dailyNewInvestments')}</h3>
                     <div className="h-72">
-                        <DailyInvestmentsChart data={dailyInvestmentsData} />
+                        <DailyInvestmentsChart data={investments.map(inv => ({ date: inv.date, amount: inv.amount }))} />
                     </div>
                  </div>
-                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
-                    <h3 className="text-lg font-semibold text-white mb-4">{t('admin.overview.payoutsByRank')}</h3>
+                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700/50">
+                    <h3 className="text-lg font-bold text-white mb-4">{t('admin.overview.payoutsByRank')}</h3>
                     <div className="h-72">
                         <PayoutsByRankChart data={payoutsByRankData} />
                     </div>
@@ -163,31 +157,34 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h2 className="text-2xl font-semibold text-white">{t('admin.title')}</h2>
-         <div className="bg-gray-800 p-3 rounded-lg shadow-lg flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-            <span className="font-semibold text-white whitespace-nowrap">{t('admin.simulatedDate')}: {currentDate.toLocaleDateString()}</span>
+        <h2 className="text-2xl font-black text-white uppercase tracking-tight">{t('admin.title')}</h2>
+         <div className="bg-gray-800 p-2 rounded-xl shadow-lg flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 border border-gray-700">
+            <div className="px-3 py-1 bg-gray-900 rounded-lg">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mr-2">{t('admin.simulatedDate')}:</span>
+                <span className="font-mono text-brand-primary font-bold">{currentDate.toLocaleDateString()}</span>
+            </div>
             <div className="flex items-center space-x-2">
-                <button onClick={() => advanceDate(1)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded-lg text-sm">{t('admin.advance1Day')}</button>
-                <button onClick={() => advanceDate(7)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded-lg text-sm">{t('admin.advance7Days')}</button>
-                <button onClick={() => advanceDate(30)} className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-3 rounded-lg text-sm">{t('admin.advance30Days')}</button>
+                <button onClick={() => advanceDate(1)} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition-colors border border-gray-600">{t('admin.advance1Day')}</button>
+                <button onClick={() => advanceDate(7)} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-1 px-3 rounded-lg text-xs transition-colors border border-gray-600">{t('admin.advance7Days')}</button>
+                <button onClick={() => advanceDate(30)} className="bg-brand-primary hover:bg-brand-primary/90 text-white font-bold py-1 px-3 rounded-lg text-xs transition-all shadow-md">{t('admin.advance30Days')}</button>
             </div>
         </div>
       </div>
       
-      <div className="border-b border-gray-700">
-        <div className="flex space-x-2 overflow-x-auto pb-2">
+      <div className="overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex space-x-2 min-w-max">
             <TabButton tabId="overview" label={t('admin.tabs.overview')} />
             <TabButton tabId="users" label={t('admin.tabs.users')} />
             <TabButton tabId="deposits" label={
               <div className="flex items-center space-x-2">
                   <span>{t('admin.tabs.deposits')}</span>
-                  {pendingDeposits > 0 && <span className="bg-yellow-500 text-black text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{pendingDeposits}</span>}
+                  {pendingDeposits > 0 && <span className="bg-yellow-500 text-black text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse">{pendingDeposits}</span>}
               </div>
             } />
             <TabButton tabId="withdrawals" label={
               <div className="flex items-center space-x-2">
                   <span>{t('admin.tabs.withdrawals')}</span>
-                  {pendingWithdrawals > 0 && <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{pendingWithdrawals}</span>}
+                  {pendingWithdrawals > 0 && <span className="bg-red-500 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center animate-pulse">{pendingWithdrawals}</span>}
               </div>
             } />
             <TabButton tabId="investments" label={t('admin.tabs.investments')} />
@@ -201,7 +198,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-4 transition-all duration-300">
         {renderContent()}
       </div>
     </div>

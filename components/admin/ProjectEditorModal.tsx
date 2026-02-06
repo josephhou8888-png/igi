@@ -12,7 +12,6 @@ interface ProjectEditorModalProps {
 
 type Tab = 'general' | 'bonuses' | 'ranks';
 
-// Helper components moved OUTSIDE to prevent re-mounting and focus loss
 const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="space-y-4 mb-8">
         <h3 className="text-lg font-semibold text-brand-primary border-b border-gray-700 pb-2 mb-4">{title}</h3>
@@ -35,7 +34,7 @@ const FormInput: React.FC<{
         <input 
             type={type} 
             name={name} 
-            value={String(value || '')} 
+            value={String(value ?? '')} 
             onChange={onChange} 
             disabled={disabled}
             step={step}
@@ -75,21 +74,18 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const getInitialState = (): Partial<Omit<Project, 'id'>> => {
-        if (projectToEdit) return { ...projectToEdit };
-        return {
-            tokenName: '', assetType: '', assetIdentifier: '', assetDescription: '',
-            assetLocation: '', assetImageUrl: '', assetValuation: 1000000,
-            valuationMethod: 'Professional Appraisal', valuationDate: currentDate.toISOString().split('T')[0],
-            performanceHistory: 'N/A', expectedYield: 8.5, proofOfOwnership: 'On File',
-            legalStructure: 'SPV LLC', legalWrapper: 'Token represents fractional ownership', jurisdiction: 'Delaware, USA',
-            regulatoryStatus: 'Reg D', investorRequirements: 'Accredited Investors Only', tokenTicker: '',
-            totalTokenSupply: 100000, tokenPrice: 100, minInvestment: 5000,
-            blockchain: 'Ethereum', smartContractAddress: '0x...', distribution: 'Private Placement',
-            rightsConferred: 'Fractional Ownership, Pro-rata share of income', assetCustodian: 'Third-Party Custodian', 
-            assetManager: 'IGI Asset Management', oracles: 'Chainlink',
-        };
-    };
+    const getInitialState = (): Partial<Omit<Project, 'id'>> => ({
+        tokenName: '', assetType: '', assetIdentifier: '', assetDescription: '',
+        assetLocation: '', assetImageUrl: '', assetValuation: 1000000,
+        valuationMethod: 'Professional Appraisal', valuationDate: currentDate.toISOString().split('T')[0],
+        performanceHistory: 'N/A', expectedYield: 8.5, proofOfOwnership: 'On File',
+        legalStructure: 'SPV LLC', legalWrapper: 'Token represents fractional ownership', jurisdiction: 'Delaware, USA',
+        regulatoryStatus: 'Reg D', investorRequirements: 'Accredited Investors Only', tokenTicker: '',
+        totalTokenSupply: 100000, tokenPrice: 100, minInvestment: 5000,
+        blockchain: 'Ethereum', smartContractAddress: '0x...', distribution: 'Private Placement',
+        rightsConferred: 'Fractional Ownership, Pro-rata share of income', assetCustodian: 'Third-Party Custodian', 
+        assetManager: 'IGI Asset Management', oracles: 'Chainlink',
+    });
 
     const [formData, setFormData] = useState(getInitialState());
     const [bonusConfig, setBonusConfig] = useState<BonusConfig>({ instant: globalInstant, teamBuilder: globalTeam });
@@ -115,15 +111,10 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                 alert("Image size must be less than 2MB");
                 return;
             }
-
             setIsUploading(true);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({ ...prev, assetImageUrl: reader.result as string }));
-                setIsUploading(false);
-            };
-            reader.onerror = () => {
-                alert("Error reading file");
                 setIsUploading(false);
             };
             reader.readAsDataURL(file);
@@ -157,12 +148,7 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const projectData = {
-                ...formData,
-                customBonusConfig: bonusConfig,
-                customRankConfig: rankConfig
-            };
-
+            const projectData = { ...formData, customBonusConfig: bonusConfig, customRankConfig: rankConfig };
             if (projectToEdit) {
                 await updateProject({ ...projectToEdit, ...projectData } as Project);
             } else {
@@ -183,18 +169,14 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                     <h2 className="text-2xl font-bold text-white">
                         {projectToEdit ? t('admin.projectEditor.editTitle') : t('admin.projectEditor.createTitle')}
                     </h2>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+                    <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" disabled={isSubmitting}>
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
 
-                <div className="flex border-b border-gray-700 mb-6 space-x-6">
+                <div className="flex border-b border-gray-700 mb-6 space-x-6 overflow-x-auto pb-1">
                     {(['general', 'bonuses', 'ranks'] as Tab[]).map(tab => (
-                        <button 
-                            key={tab}
-                            onClick={() => setActiveTab(tab)} 
-                            className={`pb-3 px-1 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === tab ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-500 hover:text-gray-300'}`}
-                        >
+                        <button key={tab} type="button" onClick={() => setActiveTab(tab)} className={`pb-3 px-1 text-xs sm:text-sm font-bold uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'text-brand-primary border-b-2 border-brand-primary' : 'text-gray-500 hover:text-gray-300'}`}>
                             {tab}
                         </button>
                     ))}
@@ -205,10 +187,10 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                         {activeTab === 'general' && (
                             <div className="space-y-6">
                                 <FormSection title={t('projectDetail.assetDetails')}>
-                                    <FormInput name="tokenName" label="Token Name" value={formData.tokenName || ''} onChange={handleChange} />
-                                    <FormInput name="tokenTicker" label="Token Ticker" value={formData.tokenTicker || ''} onChange={handleChange} />
-                                    <FormInput name="assetType" label={t('projectDetail.assetType')} value={formData.assetType || ''} onChange={handleChange} />
-                                    <FormInput name="assetLocation" label={t('projectDetail.location')} value={formData.assetLocation || ''} onChange={handleChange} />
+                                    <FormInput name="tokenName" label="Token Name" value={formData.tokenName || ''} onChange={handleChange} disabled={isSubmitting} />
+                                    <FormInput name="tokenTicker" label="Token Ticker" value={formData.tokenTicker || ''} onChange={handleChange} disabled={isSubmitting} />
+                                    <FormInput name="assetType" label={t('projectDetail.assetType')} value={formData.assetType || ''} onChange={handleChange} disabled={isSubmitting} />
+                                    <FormInput name="assetLocation" label={t('projectDetail.location')} value={formData.assetLocation || ''} onChange={handleChange} disabled={isSubmitting} />
                                     
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Asset Image</label>
@@ -227,40 +209,22 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                                                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
                                                     </div>
                                                 )}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                    <span className="text-white text-[10px] font-bold uppercase">Change Image</span>
-                                                </div>
                                             </div>
-                                            
                                             <div className="flex-1 w-full space-y-2">
-                                                <input 
-                                                    type="file" 
-                                                    ref={fileInputRef} 
-                                                    className="hidden" 
-                                                    accept="image/*" 
-                                                    onChange={handleFileChange} 
-                                                />
-                                                <FormInput 
-                                                    name="assetImageUrl" 
-                                                    label="Or Manual Image URL" 
-                                                    value={formData.assetImageUrl || ''} 
-                                                    onChange={handleChange} 
-                                                    required={false}
-                                                />
-                                                <p className="text-[10px] text-gray-500 italic">Recommended size: 1200x800px. Max file size: 2MB.</p>
+                                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                                                <FormInput name="assetImageUrl" label="Or Manual Image URL" value={formData.assetImageUrl || ''} onChange={handleChange} required={false} disabled={isSubmitting} />
+                                                <p className="text-[10px] text-gray-500 italic">Recommended: 1200x800px. Max 2MB.</p>
                                             </div>
                                         </div>
                                     </div>
-
-                                    <FormTextarea name="assetDescription" label="Asset Description" value={formData.assetDescription || ''} onChange={handleChange} />
-                                    <FormInput name="blockchain" label={t('projectDetail.blockchain')} value={formData.blockchain || ''} onChange={handleChange} />
+                                    <FormTextarea name="assetDescription" label="Asset Description" value={formData.assetDescription || ''} onChange={handleChange} disabled={isSubmitting} />
                                 </FormSection>
                                 <FormSection title={t('projectDetail.financials')}>
-                                    <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} value={formData.assetValuation || 0} onChange={handleChange} type="number" step="any" />
-                                    <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} value={formData.expectedYield || 0} onChange={handleChange} type="number" step="any" />
-                                    <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} value={formData.minInvestment || 0} onChange={handleChange} type="number" step="any" />
-                                    <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} value={formData.tokenPrice || 0} onChange={handleChange} type="number" step="any" />
-                                    <FormInput name="totalTokenSupply" label="Total Token Supply" value={formData.totalTokenSupply || 0} onChange={handleChange} type="number" step="any" />
+                                    <FormInput name="assetValuation" label={t('projectDetail.assetValuation')} value={formData.assetValuation || 0} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
+                                    <FormInput name="expectedYield" label={`${t('projectDetail.expectedYield')} (%)`} value={formData.expectedYield || 0} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
+                                    <FormInput name="minInvestment" label={t('projectDetail.minInvestment')} value={formData.minInvestment || 0} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
+                                    <FormInput name="tokenPrice" label={t('projectDetail.tokenPrice')} value={formData.tokenPrice || 0} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
+                                    <FormInput name="totalTokenSupply" label="Total Token Supply" value={formData.totalTokenSupply || 0} onChange={handleChange} type="number" step="any" disabled={isSubmitting} />
                                 </FormSection>
                             </div>
                         )}
@@ -271,15 +235,15 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                                     <div className="grid grid-cols-3 gap-6">
                                         <div>
                                             <label className="block text-xs text-gray-400 mb-1">{t('admin.settings.investor')} (%)</label>
-                                            <input type="number" value={(bonusConfig.instant.investor * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'investor', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
+                                            <input type="number" disabled={isSubmitting} value={(bonusConfig.instant.investor * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'investor', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
                                         </div>
                                         <div>
                                             <label className="block text-xs text-gray-400 mb-1">{t('admin.settings.referrer')} (%)</label>
-                                            <input type="number" value={(bonusConfig.instant.referrer * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'referrer', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
+                                            <input type="number" disabled={isSubmitting} value={(bonusConfig.instant.referrer * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'referrer', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
                                         </div>
                                         <div>
                                             <label className="block text-xs text-gray-400 mb-1">{t('admin.settings.uplineL1')} (%)</label>
-                                            <input type="number" value={(bonusConfig.instant.upline * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'upline', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
+                                            <input type="number" disabled={isSubmitting} value={(bonusConfig.instant.upline * 100).toFixed(2)} onChange={e => handleBonusChange('instant', 'upline', e.target.value)} className="w-full bg-gray-600 text-white rounded px-3 py-2 text-sm border border-gray-500" step="0.1" />
                                         </div>
                                     </div>
                                 </div>
@@ -287,20 +251,20 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                         )}
                         {activeTab === 'ranks' && (
                             <div className="space-y-4">
-                                {rankConfig.map(rank => (
+                                {rankConfig.sort((a,b) => a.level - b.level).map(rank => (
                                     <div key={rank.level} className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 grid grid-cols-2 md:grid-cols-5 gap-3">
                                         <div className="col-span-2 md:col-span-1 font-bold text-brand-secondary">L{rank.level}</div>
                                         <div>
                                             <label className="block text-[10px] text-gray-400 uppercase">Min Accounts</label>
-                                            <input type="number" value={rank.minAccounts} onChange={e => handleRankChange(rank.level, 'minAccounts', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
+                                            <input type="number" disabled={isSubmitting} value={rank.minAccounts} onChange={e => handleRankChange(rank.level, 'minAccounts', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] text-gray-400 uppercase">Min Invest</label>
-                                            <input type="number" value={rank.minTotalInvestment} onChange={e => handleRankChange(rank.level, 'minTotalInvestment', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
+                                            <input type="number" disabled={isSubmitting} value={rank.minTotalInvestment} onChange={e => handleRankChange(rank.level, 'minTotalInvestment', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] text-gray-400 uppercase">Bonus ($)</label>
-                                            <input type="number" value={rank.fixedBonus} onChange={e => handleRankChange(rank.level, 'fixedBonus', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
+                                            <input type="number" disabled={isSubmitting} value={rank.fixedBonus} onChange={e => handleRankChange(rank.level, 'fixedBonus', e.target.value)} className="w-full bg-gray-600 text-white rounded px-2 py-1 text-xs border border-gray-500" />
                                         </div>
                                     </div>
                                 ))}
@@ -312,8 +276,13 @@ const ProjectEditorModal: React.FC<ProjectEditorModalProps> = ({ projectToEdit, 
                         <button type="button" onClick={onClose} disabled={isSubmitting} className="px-6 py-2 rounded-lg bg-gray-700 text-white font-bold hover:bg-gray-600 border border-gray-600 transition-colors">
                             {t('common.cancel')}
                         </button>
-                        <button type="submit" disabled={isSubmitting} className="px-8 py-2 rounded-lg bg-brand-primary text-white font-bold hover:bg-brand-primary/90 transition-all shadow-lg">
-                            {isSubmitting ? 'Saving...' : t('admin.projectEditor.saveProject')}
+                        <button type="submit" disabled={isSubmitting} className="px-8 py-2 rounded-lg bg-brand-primary text-white font-bold hover:bg-brand-primary/90 transition-all shadow-lg flex items-center">
+                            {isSubmitting ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    Saving...
+                                </>
+                            ) : t('admin.projectEditor.saveProject')}
                         </button>
                     </div>
                 </form>
