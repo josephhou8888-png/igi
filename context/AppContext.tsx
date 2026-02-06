@@ -8,7 +8,6 @@ import {
   INITIAL_INSTANT_BONUS_RATES, 
   INITIAL_TREASURY_WALLETS, 
   INITIAL_PLATFORM_SOCIAL_LINKS,
-  IGI_TOKEN_MINT_ADDRESS,
   MOCK_USERS,
   MOCK_INVESTMENTS,
   MOCK_TRANSACTIONS,
@@ -147,7 +146,17 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return; 
     }
     try {
-      const [{ data: usersData }, { data: invData }, { data: txData }, { data: bnsData }, { data: projData }, { data: poolData }, { data: newsData }, { data: notifData }] = await Promise.all([
+      // Individual table fetches to prevent whole-system failure if one table is missing or RLS blocked
+      const [
+          { data: usersData }, 
+          { data: invData }, 
+          { data: txData }, 
+          { data: bnsData }, 
+          { data: projData }, 
+          { data: poolData }, 
+          { data: newsData }, 
+          { data: notifData }
+      ] = await Promise.all([
         supabase.from('profiles').select('*'),
         supabase.from('investments').select('*'),
         supabase.from('transactions').select('*'),
@@ -180,7 +189,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           }));
           setUsers(mappedUsers);
 
-          // Get fresh auth session to ensure we have the correct ID
+          // Get fresh auth session inside refreshData to avoid circular dependency on currentUser
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
               const freshSelf = mappedUsers.find(u => u.id === session.user.id);
@@ -232,13 +241,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
       if (newsData) setNews(newsData);
       if (notifData) setNotifications(notifData.map(n => ({...n, userId: n.user_id})));
     } catch (error) { 
-        console.error("Error loading data", error); 
+        console.error("Error loading Supabase data:", error); 
     } finally { 
         setLoading(false); 
     }
   }, []);
 
   useEffect(() => {
+    // Demo Mode Logic
     if (!supabase) {
         setUsers(MOCK_USERS);
         setInvestments(MOCK_INVESTMENTS);
@@ -256,21 +266,30 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
     }
     
-    // Initial fetch
-    refreshData();
+    // Supabase Mode Logic
+    let isSubscribed = true;
 
-    // Setup listener
+    const initialize = async () => {
+        await refreshData();
+        if (isSubscribed) setLoading(false);
+    };
+
+    initialize();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordResetMode(true);
       if (session?.user) {
           await refreshData();
       } else {
           setCurrentUser(null);
-          setLoading(false);
+          if (isSubscribed) setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+        isSubscribed = false;
+        subscription.unsubscribe();
+    };
   }, [refreshData]);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -284,11 +303,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
     }
     
-    // Attempt login
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
 
-    // Immediately fetch profile after login
     if (data.user) {
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -297,9 +314,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             .single();
         
         if (profileError || !profile) {
-            // Profile missing - trigger a creation attempt if needed or just inform user
-            console.warn("User authenticated but profile not found in database.");
-            throw new Error("Login successful but your profile data is not ready. Please try again in a moment.");
+            throw new Error("Profile not found. Please contact support.");
         }
         
         if (profile.is_frozen) {
@@ -313,7 +328,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
   const signup = useCallback(async (userData: Partial<User>) => {
       if (!supabase) {
-        alert("Signup is disabled in demo mode. Please log in with existing credentials.");
+        alert("Signup is disabled in demo mode.");
         return;
       }
       const { error } = await supabase.auth.signUp({ 
@@ -328,7 +343,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           } 
       });
       if (error) throw error;
-      alert("Registration successful! Check your email for verification.");
+      alert("Registration successful! Check your email.");
   }, []);
 
   const getUserBalances = useCallback((userId: string) => {
