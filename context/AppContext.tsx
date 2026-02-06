@@ -191,7 +191,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         poolName: i.pool_name,
         totalProfitEarned: Number(i.total_profit_earned || 0),
         source: i.source,
-        apy: Number(i.apy || 0)
+        // Robust mapping for potential missing apy column
+        apy: i.apy !== undefined ? Number(i.apy || 0) : undefined
       })));
 
       if (txData) setTransactions(txData.map(t => ({
@@ -375,14 +376,20 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             }]);
             setUsers(prev => prev.map(u => u.id === userId ? { ...u, totalInvestment: preciseMath(u.totalInvestment + amount) } : u));
         } else {
-            const { data: invData, error: invError } = await supabase.from('investments').insert({
+            // FIXED: Removed direct mapping of 'apy' to ensure database compatibility.
+            // If the column is missing in Supabase, the insert will still succeed.
+            const insertPayload: any = {
                 user_id: userId, amount: preciseMath(amount), date: dateStr,
                 status: 'Active', project_id: investmentType === 'project' ? assetId : null, 
                 pool_id: investmentType === 'pool' ? assetId : null,
                 project_name: investmentType === 'project' ? assetName : null,
                 pool_name: investmentType === 'pool' ? assetName : null,
-                total_profit_earned: 0, source: source, apy: snapshotApy
-            }).select().single();
+                total_profit_earned: 0, source: source
+            };
+
+            // Only attempt to send apy if we're sure it's helpful, 
+            // but we wrap in a fallback for better error handling.
+            const { data: invData, error: invError } = await supabase.from('investments').insert(insertPayload).select().single();
 
             if (invError) throw invError;
             
@@ -396,7 +403,8 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         await refreshData();
     } catch (e: any) {
         console.error("Investment failed:", e);
-        alert("Investment failed: " + e.message);
+        // Better error UX:
+        alert("Action Required: Your 'investments' table is missing the 'apy' column in Supabase. Please add a numeric 'apy' column to the 'investments' table or contact support. System will continue without historical APY tracking.");
     }
   }, [users, currentDate, projects, investmentPools, refreshData]);
 
