@@ -147,7 +147,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         return; 
     }
     try {
-      // Use allSettled to ensure the application doesn't hang if some tables are missing
       const results = await Promise.allSettled([
         supabase.from('profiles').select('*'),
         supabase.from('investments').select('*'),
@@ -161,8 +160,9 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
 
       const [usersRes, invRes, txRes, bnsRes, projRes, poolRes, newsRes, notifRes] = results;
 
+      let freshUsers: User[] = [];
       if (usersRes.status === 'fulfilled' && usersRes.value.data) {
-          const mappedUsers = usersRes.value.data.map(u => ({
+          freshUsers = usersRes.value.data.map(u => ({
               ...u,
               id: u.id,
               name: sanitizeString(u.name, 'User'),
@@ -181,13 +181,16 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
               role: u.role ? u.role.toLowerCase().trim() : 'user',
               achievements: u.achievements || []
           }));
-          setUsers(mappedUsers);
+          setUsers(freshUsers);
 
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-              const freshSelf = mappedUsers.find(u => u.id === session.user.id);
+              const freshSelf = freshUsers.find(u => u.id === session.user.id);
               if (freshSelf) {
                   setCurrentUser(freshSelf);
+              } else {
+                  // Fallback: If session user is not in the freshUsers list yet, it might be a newly created Auth user
+                  // We should NOT set currentUser to null here, as it might cause a flicker or log out.
               }
           }
       }
@@ -303,24 +306,68 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     if (error) throw error;
 
     if (data.user) {
-        const { data: profile, error: profileError } = await supabase
+        // Attempt to fetch profile
+        let { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
-            .single();
+            .maybeSingle();
         
-        if (profileError || !profile) {
-            throw new Error("Profile not found. Please contact support.");
+        // Auto-create profile if missing (common for manually created Auth users)
+        if (!profile) {
+            const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user.user_metadata?.name || email.split('@')[0],
+                    role: 'user',
+                    rank: 1,
+                    kyc_status: 'Not Submitted',
+                    join_date: new Date().toISOString().split('T')[0],
+                    referral_code: `IGI${Math.floor(1000 + Math.random() * 9000)}`
+                })
+                .select()
+                .single();
+            
+            if (createError) {
+                console.error("Error creating profile:", createError);
+                throw new Error("Login successful but failed to initialize your profile. Please contact support.");
+            }
+            profile = newProfile;
         }
         
-        if (profile.is_frozen) {
+        if (profile?.is_frozen) {
             await supabase.auth.signOut();
             throw new Error("Account is frozen.");
         }
         
+        // Trigger a data refresh and wait for it to ensure currentUser state is updated
         await refreshData();
+        
+        // Final sanity check
+        if (!currentUser) {
+           // If refreshData didn't catch the user yet, set it manually from the fetched profile
+           setCurrentUser({
+              ...profile,
+              id: profile.id,
+              name: profile.name,
+              email: profile.email,
+              wallet: profile.wallet || '',
+              role: profile.role || 'user',
+              rank: profile.rank || 1,
+              totalInvestment: profile.total_investment || 0,
+              totalDownline: profile.total_downline || 0,
+              monthlyIncome: profile.monthly_income || 0,
+              kycStatus: profile.kyc_status,
+              joinDate: profile.join_date,
+              referralCode: profile.referral_code,
+              avatar: profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`,
+              achievements: profile.achievements || []
+           } as User);
+        }
     }
-  }, [refreshData]);
+  }, [refreshData, currentUser]);
 
   const signup = useCallback(async (userData: Partial<User>) => {
       if (!supabase) {
@@ -339,7 +386,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
           } 
       });
       if (error) throw error;
-      alert("Registration successful! Check your email.");
+      alert("Registration successful! Check your email for verification.");
   }, []);
 
   const getUserBalances = useCallback((userId: string) => {

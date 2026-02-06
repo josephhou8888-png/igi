@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../hooks/useAppContext';
 import { useLocalization } from '../hooks/useLocalization';
 import { locales } from '../locales';
@@ -22,7 +22,10 @@ const Login: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  // Fix: Use ReturnType<typeof setTimeout> instead of NodeJS.Timeout to avoid namespace errors in browser environments
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Define currentLocaleData to resolve the ReferenceError
   const currentLocaleData = locales[locale as keyof typeof locales] || locales['en'];
 
   useEffect(() => {
@@ -31,11 +34,8 @@ const Login: React.FC = () => {
         const refParam = params.get('ref');
         const path = window.location.pathname;
 
-        // Handle 404/Unknown paths by defaulting to Signup and redirecting to root
-        // This effectively catches any "page not found" logic for unauthenticated users
         if (path !== '/' && path !== '/index.html') {
             setView('signup');
-            // Clean URL but preserve query params (like ref)
             const newUrl = '/' + window.location.search;
             window.history.replaceState(null, '', newUrl);
         }
@@ -46,6 +46,10 @@ const Login: React.FC = () => {
         }
     } catch (e) {
         console.warn("Could not access window.location or history:", e);
+    }
+
+    return () => {
+        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     }
   }, []);
 
@@ -59,6 +63,14 @@ const Login: React.FC = () => {
     setSuccessMsg('');
     setLoading(true);
 
+    // Fail-safe to reset loading button after 15 seconds if nothing happens
+    loadingTimeoutRef.current = setTimeout(() => {
+        if (loading) {
+            setLoading(false);
+            setError("Connection timeout. Please check your internet or try refreshing.");
+        }
+    }, 15000);
+
     try {
       if (view === 'signup') {
         if (formData.password !== formData.confirmPassword) {
@@ -68,7 +80,6 @@ const Login: React.FC = () => {
             throw new Error(t('login.error.passwordLength'));
         }
         
-        // Handle referral logic if code is provided
         let uplineId = null;
         if (formData.referralCode) {
             const upline = users.find(u => u.referralCode === formData.referralCode);
@@ -92,9 +103,20 @@ const Login: React.FC = () => {
         await login(formData.email.trim(), formData.password);
       }
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
-    } finally {
+      console.error("Auth Error Details:", err);
+      let friendlyError = err.message || "Authentication failed";
+      
+      if (err.message?.includes("Invalid login credentials")) {
+          friendlyError = "Invalid email or password. Please try again.";
+      } else if (err.message?.includes("Database error")) {
+          friendlyError = "Unable to connect to the database. Please try again in a few moments.";
+      }
+      
+      setError(friendlyError);
       setLoading(false);
+    } finally {
+        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+        // Note: We only set loading(false) on catch. On success, the component unmounts.
     }
   };
 
@@ -107,14 +129,11 @@ const Login: React.FC = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
       <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-2xl border border-gray-700 relative overflow-visible">
         
-        {/* Top Right Controls Container */}
         <div className="absolute top-4 right-4 flex items-center space-x-3 z-20">
-            {/* Mode Indicator Badge */}
             <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${isDemoMode ? 'bg-yellow-900 text-yellow-300 border border-yellow-700' : 'bg-green-900 text-green-300 border border-green-700'}`}>
                 {isDemoMode ? t('login.demoMode') : t('login.liveMode')}
             </div>
 
-            {/* Language Selector */}
             <div className="relative">
                 <button 
                     onClick={() => setIsLanguageOpen(!isLanguageOpen)} 
@@ -153,7 +172,7 @@ const Login: React.FC = () => {
         </div>
 
         {error && (
-            <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative text-sm" role="alert">
+            <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded relative text-sm animate-pulse" role="alert">
                 <span className="block sm:inline">{error}</span>
             </div>
         )}
@@ -312,8 +331,10 @@ const Login: React.FC = () => {
         </div>
 
         {isDemoMode && (
-            <div className="text-center text-xs text-gray-500 mt-4">
-                <p>{t('login.demoHint')}</p>
+            <div className="text-center text-xs text-gray-500 mt-4 bg-gray-900/50 p-2 rounded border border-gray-700">
+                <p className="font-bold text-gray-400 mb-1">DEMO CREDENTIALS</p>
+                <p>Email: admin@igipartnership.com</p>
+                <p>Password: password</p>
             </div>
         )}
       </div>
