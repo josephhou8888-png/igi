@@ -188,9 +188,6 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
               const freshSelf = freshUsers.find(u => u.id === session.user.id);
               if (freshSelf) {
                   setCurrentUser(freshSelf);
-              } else {
-                  // Fallback: If session user is not in the freshUsers list yet, it might be a newly created Auth user
-                  // We should NOT set currentUser to null here, as it might cause a flicker or log out.
               }
           }
       }
@@ -342,32 +339,29 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             throw new Error("Account is frozen.");
         }
         
-        // Trigger a data refresh and wait for it to ensure currentUser state is updated
-        await refreshData();
+        // Map DB record to local User type
+        const loggedInUser: User = {
+            ...profile,
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            wallet: profile.wallet || '',
+            role: profile.role || 'user',
+            rank: profile.rank || 1,
+            totalInvestment: profile.total_investment || 0,
+            totalDownline: profile.total_downline || 0,
+            monthlyIncome: profile.monthly_income || 0,
+            kycStatus: profile.kyc_status,
+            joinDate: profile.join_date,
+            referralCode: profile.referral_code,
+            avatar: profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`,
+            achievements: profile.achievements || []
+        };
         
-        // Final sanity check
-        if (!currentUser) {
-           // If refreshData didn't catch the user yet, set it manually from the fetched profile
-           setCurrentUser({
-              ...profile,
-              id: profile.id,
-              name: profile.name,
-              email: profile.email,
-              wallet: profile.wallet || '',
-              role: profile.role || 'user',
-              rank: profile.rank || 1,
-              totalInvestment: profile.total_investment || 0,
-              totalDownline: profile.total_downline || 0,
-              monthlyIncome: profile.monthly_income || 0,
-              kycStatus: profile.kyc_status,
-              joinDate: profile.join_date,
-              referralCode: profile.referral_code,
-              avatar: profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=random`,
-              achievements: profile.achievements || []
-           } as User);
-        }
+        setCurrentUser(loggedInUser);
+        await refreshData();
     }
-  }, [refreshData, currentUser]);
+  }, [refreshData]);
 
   const signup = useCallback(async (userData: Partial<User>) => {
       if (!supabase) {

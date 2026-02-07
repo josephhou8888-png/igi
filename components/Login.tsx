@@ -22,10 +22,10 @@ const Login: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
-  // Fix: Use ReturnType<typeof setTimeout> instead of NodeJS.Timeout to avoid namespace errors in browser environments
+  
+  // Use ReturnType<typeof setTimeout> instead of NodeJS.Timeout to avoid namespace errors in browser environments
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Define currentLocaleData to resolve the ReferenceError
   const currentLocaleData = locales[locale as keyof typeof locales] || locales['en'];
 
   useEffect(() => {
@@ -108,15 +108,15 @@ const Login: React.FC = () => {
       
       if (err.message?.includes("Invalid login credentials")) {
           friendlyError = "Invalid email or password. Please try again.";
-      } else if (err.message?.includes("Database error")) {
-          friendlyError = "Unable to connect to the database. Please try again in a few moments.";
+      } else if (err.message?.includes("Database error") || err.message?.includes("Failed to fetch")) {
+          friendlyError = "Unable to connect to the database. Please check your internet or try again in a few moments.";
       }
       
       setError(friendlyError);
       setLoading(false);
     } finally {
         if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
-        // Note: We only set loading(false) on catch. On success, the component unmounts.
+        // We only set loading(false) on catch. On success, the component unmounts as the AppContent state changes.
     }
   };
 
