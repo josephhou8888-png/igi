@@ -65,9 +65,9 @@ const Login: React.FC = () => {
 
     // Fail-safe to reset loading button after 15 seconds if nothing happens
     loadingTimeoutRef.current = setTimeout(() => {
-        if (loading) {
-            setLoading(false);
-            setError("Connection timeout. Please check your internet or try refreshing.");
+        setLoading(false);
+        if (!error && !successMsg) {
+             setError("Connection timeout. Please check your internet or try refreshing.");
         }
     }, 15000);
 
@@ -99,8 +99,11 @@ const Login: React.FC = () => {
         }
         await sendPasswordResetEmail(formData.email.trim());
         setSuccessMsg("If an account exists for this email, you will receive a password reset link shortly.");
+        setLoading(false);
       } else {
         await login(formData.email.trim(), formData.password);
+        // On successful login, the component is unmounted by App.tsx. 
+        // We don't necessarily need to set loading(false) here.
       }
     } catch (err: any) {
       console.error("Auth Error Details:", err);
@@ -108,15 +111,17 @@ const Login: React.FC = () => {
       
       if (err.message?.includes("Invalid login credentials")) {
           friendlyError = "Invalid email or password. Please try again.";
-      } else if (err.message?.includes("Database error") || err.message?.includes("Failed to fetch")) {
-          friendlyError = "Unable to connect to the database. Please check your internet or try again in a few moments.";
+      } else if (err.message?.includes("Database error")) {
+          friendlyError = "Unable to connect to the database. Please try again in a few moments.";
       }
       
       setError(friendlyError);
       setLoading(false);
     } finally {
-        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
-        // We only set loading(false) on catch. On success, the component unmounts as the AppContent state changes.
+        if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current);
+            loadingTimeoutRef.current = null;
+        }
     }
   };
 

@@ -275,6 +275,7 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordResetMode(true);
       if (session?.user) {
+          // If we already have a user, refreshData will update them
           await refreshData();
       } else {
           setCurrentUser(null);
@@ -303,14 +304,14 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
     if (error) throw error;
 
     if (data.user) {
-        // Attempt to fetch profile
+        // Attempt to fetch profile immediately
         let { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .maybeSingle();
         
-        // Auto-create profile if missing (common for manually created Auth users)
+        // Auto-create profile if missing
         if (!profile) {
             const { data: newProfile, error: createError } = await supabase
                 .from('profiles')
@@ -339,18 +340,18 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
             throw new Error("Account is frozen.");
         }
         
-        // Map DB record to local User type
+        // Map and set the user immediately so the UI can transition
         const loggedInUser: User = {
             ...profile,
             id: profile.id,
             name: profile.name,
             email: profile.email,
             wallet: profile.wallet || '',
-            role: profile.role || 'user',
+            role: (profile.role || 'user').toLowerCase().trim(),
             rank: profile.rank || 1,
-            totalInvestment: profile.total_investment || 0,
-            totalDownline: profile.total_downline || 0,
-            monthlyIncome: profile.monthly_income || 0,
+            totalInvestment: Number(profile.total_investment || 0),
+            totalDownline: Number(profile.total_downline || 0),
+            monthlyIncome: Number(profile.monthly_income || 0),
             kycStatus: profile.kyc_status,
             joinDate: profile.join_date,
             referralCode: profile.referral_code,
@@ -359,10 +360,13 @@ export const AppContextProvider: React.FC<{ children: ReactNode }> = ({ children
         };
         
         setCurrentUser(loggedInUser);
-        await refreshData();
+        
+        // Trigger background refresh for other data tables
+        refreshData(); 
     }
   }, [refreshData]);
-
+  
+  // Rest of the AppContext remains the same
   const signup = useCallback(async (userData: Partial<User>) => {
       if (!supabase) {
         alert("Signup is disabled in demo mode.");
